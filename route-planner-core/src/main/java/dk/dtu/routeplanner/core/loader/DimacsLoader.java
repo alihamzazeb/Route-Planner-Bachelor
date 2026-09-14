@@ -46,14 +46,14 @@ public class DimacsLoader {
         }
 
         // we count how many arcs each node has. so we know how many slots we need to allocate for each node in the forward graph. we can do this by iterating through the sources array and incrementing the count for each source node.
-        int[] counts = new int[nodeCount];
+        int[] counts = new int[nodeCount]; // stores how many edges each node has
         for (int i = 0; i < arcCount; i++) {
             counts[sources[i]]++;
         }
 
         // we make an offsets array which will tell us where each node starts in the forward graph.
         // we want to put all of node 0's edges together in the array, and then node 1, then node 2.....
-        int[] offsets = new int[nodeCount + 1];
+        int[] offsets = new int[nodeCount + 1]; 
         for (int i = 1; i < offsets.length; i++) {
             offsets[i] = offsets[i - 1] + counts[i - 1];
         }
@@ -97,7 +97,7 @@ public class DimacsLoader {
 
         Graph forward = new CsrGraph(offsets, fwdTargets, fwdWeights);
         Graph reverse = new CsrGraph(revOffsets, revTargets, revWeights);
-        return new RoadNetwork(forward, reverse);
+        return new RoadNetwork(forward, reverse); // both graphs are created and they explain the same road network
 
     }
 }
