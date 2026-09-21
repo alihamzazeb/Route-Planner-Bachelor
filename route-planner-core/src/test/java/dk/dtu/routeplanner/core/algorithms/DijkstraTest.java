@@ -10,8 +10,10 @@ import dk.dtu.routeplanner.core.graph.CsrGraph;
 import dk.dtu.routeplanner.core.graph.Graph;
 import dk.dtu.routeplanner.core.graph.RoadNetwork;
 import dk.dtu.routeplanner.core.loader.DimacsLoader;
+import dk.dtu.routeplanner.core.model.SingleSourceResult;
 
 public class DijkstraTest {
+//        SingleSourceResult(settledCounter, relaxedCounter, dist);
 
     @Test
     void distancesFromNodeZero() {
@@ -20,12 +22,12 @@ public class DijkstraTest {
         double[] weights = {10, 40, 60, 30, 20, 50};
         Graph graph = new CsrGraph(offsets, targets, weights);
 
-        double[] dist = new Dijkstra().computeShortestPaths(graph, 0);
+        SingleSourceResult dist = new Dijkstra().computeShortestPaths(graph, 0);
 
-        assertEquals(0, dist[0]);
-        assertEquals(10, dist[1]);
-        assertEquals(40, dist[2]);
-        assertEquals(40, dist[3]);
+        assertEquals(0, dist.distance(0));
+        assertEquals(10, dist.distance(1));
+        assertEquals(40, dist.distance(2));
+        assertEquals(40, dist.distance(3));
     }
 
 
@@ -36,11 +38,11 @@ public class DijkstraTest {
         double[] weights = {10};
         Graph graph = new CsrGraph(offsets, targets, weights);
 
-        double[] dist = new Dijkstra().computeShortestPaths(graph, 0);
+        SingleSourceResult dist = new Dijkstra().computeShortestPaths(graph, 0);
 
-        assertEquals(0, dist[0]);
-        assertEquals(10, dist[1]);
-        assertEquals(Double.POSITIVE_INFINITY, dist[2]);
+        assertEquals(0, dist.distance(0));
+        assertEquals(10, dist.distance(1));
+        assertEquals(Double.POSITIVE_INFINITY, dist.distance(2));
     }
 
     @Test
@@ -50,11 +52,11 @@ public class DijkstraTest {
         double[] weights = {};
         Graph graph = new CsrGraph(offsets, targets, weights);
 
-        double[] dist = new Dijkstra().computeShortestPaths(graph, 0);
+        SingleSourceResult dist = new Dijkstra().computeShortestPaths(graph, 0);
 
-        assertEquals(0, dist[0]);
-        assertEquals(Double.POSITIVE_INFINITY, dist[1]);
-        assertEquals(Double.POSITIVE_INFINITY, dist[2]);
+        assertEquals(0, dist.distance(0));
+        assertEquals(Double.POSITIVE_INFINITY, dist.distance(1));
+        assertEquals(Double.POSITIVE_INFINITY, dist.distance(2));
     }
 
 
@@ -63,18 +65,18 @@ public class DijkstraTest {
         RoadNetwork network = new DimacsLoader().load(Path.of("../data/USA-road-d.NY.gr"));
 
         long start = System.nanoTime();
-        double[] dist = new Dijkstra().computeShortestPaths(network.forward(), 0);
+        SingleSourceResult dist = new Dijkstra().computeShortestPaths(network.forward(), 0);
         long elapsed = System.nanoTime() - start;
 
         int unreachable = 0;
-        for (int i = 0; i < dist.length; i++) {
-            if (dist[i] == Double.POSITIVE_INFINITY) {
+        for (int i = 0; i < network.forward().nodeCount(); i++) {
+            if (dist.distance(i) == Double.POSITIVE_INFINITY) {
                 unreachable++;
             }
         }
         System.out.println("unreachable: " + unreachable);
 
-        assertEquals(0.0, dist[0]);
+        assertEquals(0.0, dist.distance(0));
         assertEquals(0, unreachable); // to see if it covered all of the nodes
         System.out.println("time: " + elapsed / 1_000_000 + " ms");
     }
