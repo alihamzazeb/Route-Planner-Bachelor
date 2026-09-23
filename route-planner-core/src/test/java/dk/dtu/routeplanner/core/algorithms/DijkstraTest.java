@@ -3,6 +3,7 @@ package dk.dtu.routeplanner.core.algorithms;
 import java.io.IOException;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 
@@ -10,10 +11,10 @@ import dk.dtu.routeplanner.core.graph.CsrGraph;
 import dk.dtu.routeplanner.core.graph.Graph;
 import dk.dtu.routeplanner.core.graph.RoadNetwork;
 import dk.dtu.routeplanner.core.loader.DimacsLoader;
+import dk.dtu.routeplanner.core.model.SearchResult;
 import dk.dtu.routeplanner.core.model.SingleSourceResult;
 
 public class DijkstraTest {
-//        SingleSourceResult(settledCounter, relaxedCounter, dist);
 
     @Test
     void distancesFromNodeZero() {
@@ -61,6 +62,21 @@ public class DijkstraTest {
 
 
     @Test
+    void targetPath() {
+        int[] offsets = {0, 3, 4, 5, 6};
+        int[] targets = {1, 2, 3, 3, 0, 1};
+        double[] weights = {10, 40, 60, 30, 20, 50};
+        Graph graph = new CsrGraph(offsets, targets, weights);
+
+        SearchResult result = new Dijkstra().findShortestPath(graph, 0, 3);
+        int[] EXPECTED_PATH = {0, 1, 3};
+        double EXPECTED_DISTANCE = 40;
+        assertEquals(EXPECTED_DISTANCE, result.distance());
+        assertArrayEquals(EXPECTED_PATH, result.path());
+    }
+
+
+    @Test
     void runsOnNewYork() throws IOException {
         RoadNetwork network = new DimacsLoader().load(Path.of("../data/USA-road-d.NY.gr"));
 
@@ -80,4 +96,27 @@ public class DijkstraTest {
         assertEquals(0, unreachable); // to see if it covered all of the nodes
         System.out.println("time: " + elapsed / 1_000_000 + " ms");
     }
+
+
+    @Test
+    void pointToPointAgreesWithSingleSource() throws IOException {
+        RoadNetwork network = new DimacsLoader().load(Path.of("../data/USA-road-d.NY.gr"));
+        Graph graph = network.forward();
+
+        SingleSourceResult all = new Dijkstra().computeShortestPaths(graph, 0);
+
+        int targetA = 43;
+        int targetB = 8765;
+        int targetC = 23456;
+
+        SearchResult resultA = new Dijkstra().findShortestPath(graph, 0, targetA);
+        SearchResult resultB = new Dijkstra().findShortestPath(graph, 0, targetB);
+        SearchResult resultC = new Dijkstra().findShortestPath(graph, 0, targetC);
+
+        assertEquals(all.distance(targetA), resultA.distance());
+        assertEquals(all.distance(targetB), resultB.distance());
+        assertEquals(all.distance(targetC), resultC.distance());
+    }
+
+
 }
