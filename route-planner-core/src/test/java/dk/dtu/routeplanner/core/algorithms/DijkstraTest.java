@@ -118,5 +118,18 @@ public class DijkstraTest {
         assertEquals(all.distance(targetC), resultC.distance());
     }
 
+    @Test
+    void unreachableTarget() {
+        int[] offsets = {0, 1, 1, 1};
+        int[] targets = {1};
+        double[] weights = {10};
+        Graph graph = new CsrGraph(offsets, targets, weights);
+
+        SearchResult result = new Dijkstra().findShortestPath(graph, 0, 2);
+
+        assertEquals(Double.POSITIVE_INFINITY, result.distance());
+        assertEquals(0, result.path().length);
+    }
+
 
 }

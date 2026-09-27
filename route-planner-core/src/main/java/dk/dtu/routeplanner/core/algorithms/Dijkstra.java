@@ -69,7 +69,7 @@ public class Dijkstra {
         int settledCounter=0;
         int relaxedCounter=0;
 
-        ArrayList<Integer> path = new ArrayList<Integer>();
+        ArrayList<Integer> path = new ArrayList<>();
         int nodePointer=target;
         boolean[] settled = new boolean[graph.nodeCount()];
         
@@ -105,6 +105,10 @@ public class Dijkstra {
                     queue.add(new Entry(neighbour, dist[neighbour]));
                 }
             }
+        }
+
+        if (dist[target]==Double.POSITIVE_INFINITY){
+            return new SearchResult(Double.POSITIVE_INFINITY, new int[0], settledCounter, relaxedCounter);
         }
 
         while (!(nodePointer==source)) {
