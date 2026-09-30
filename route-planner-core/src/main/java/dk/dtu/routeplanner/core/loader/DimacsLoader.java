@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
+import dk.dtu.routeplanner.core.graph.Coordinates;
 import dk.dtu.routeplanner.core.graph.CsrGraph;
 import dk.dtu.routeplanner.core.graph.Graph;
 import dk.dtu.routeplanner.core.graph.RoadNetwork;
@@ -100,4 +101,32 @@ public class DimacsLoader {
         return new RoadNetwork(forward, reverse); // both graphs are created and they explain the same road network
 
     }
+
+
+    public Coordinates loadCoordinates(Path filePath) throws IOException {
+        List<String> lines = Files.readAllLines(filePath); // read all lines from the file
+
+        int nodeCount = 0;
+        for (String line : lines) {
+            if (line.startsWith("p")) {
+                String[] pParts = line.split(" ");
+                nodeCount = Integer.parseInt(pParts[4]);
+                break; 
+            }
+        }
+
+        int[] longitude = new int[nodeCount];
+        int[] latitude = new int[nodeCount];
+
+        for (String line : lines) {
+            if (line.startsWith("v")) {
+                String[] vParts = line.split(" ");
+                int node = Integer.parseInt(vParts[1])-1;
+                longitude[node] = Integer.parseInt(vParts[2]);
+                latitude[node] = Integer.parseInt(vParts[3]);
+            }
+        }
+        return new Coordinates(longitude, latitude);
+    }
+
 }
