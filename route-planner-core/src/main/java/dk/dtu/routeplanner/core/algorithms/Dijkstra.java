@@ -11,8 +11,9 @@ import dk.dtu.routeplanner.core.model.SearchResult;
 import dk.dtu.routeplanner.core.model.SingleSourceResult;
 
 
-public class Dijkstra {
+public class Dijkstra implements PointToPointAlgorithm, SingleSourceAlgorithm {
 
+    @Override
     public SingleSourceResult computeShortestPaths(Graph graph, int source){
         double[] dist = new double[graph.nodeCount()]; 
         Arrays.fill(dist, Double.POSITIVE_INFINITY);
@@ -58,6 +59,7 @@ public class Dijkstra {
     }
 
 
+    @Override
     public SearchResult findShortestPath(Graph graph, int source, int target){
         double[] dist = new double[graph.nodeCount()];
         int[] prev = new int[graph.nodeCount()]; 
