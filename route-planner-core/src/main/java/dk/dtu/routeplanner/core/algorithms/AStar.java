@@ -10,7 +10,7 @@ import dk.dtu.routeplanner.core.graph.Graph;
 import dk.dtu.routeplanner.core.graph.StraightLine;
 import dk.dtu.routeplanner.core.model.SearchResult;
 
-public class AStar {
+public class AStar implements PointToPointAlgorithm{
     private final double c;
     private final StraightLine straightLine;
 
@@ -31,6 +31,7 @@ public class AStar {
 
 
 
+    @Override
     public SearchResult findShortestPath(Graph graph, int source, int target){
             double[] dist = new double[graph.nodeCount()];
             int[] prev = new int[graph.nodeCount()]; 
