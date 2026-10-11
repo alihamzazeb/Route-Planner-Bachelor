@@ -12,9 +12,11 @@ import dk.dtu.routeplanner.core.model.SearchResult;
 
 public class BidirectionalDijkstra implements PointToPointAlgorithm {
 
+    private final Graph forwardGraph;
     private final Graph reverse;
 
     public BidirectionalDijkstra(RoadNetwork network) {
+        this.forwardGraph = network.forward();
         this.reverse = network.reverse();
     }
 
@@ -22,35 +24,42 @@ public class BidirectionalDijkstra implements PointToPointAlgorithm {
 
     @Override
     public SearchResult findShortestPath(Graph forward, int source, int target) {
-        int n = forward.nodeCount();
-        if (reverse.nodeCount() != n) {
-            throw new IllegalArgumentException("Forward and reverse graphs have different node counts");
+        if (forward != forwardGraph) {
+            throw new IllegalArgumentException(
+                "Forward graph does not belong to this RoadNetwork"
+            );
         }
+
+        int n = forward.nodeCount();
         if (source < 0 || source >= n || target < 0 || target >= n) {
             throw new IllegalArgumentException("Invalid source or target node");
         }
         if (source == target) {
-            return new SearchResult(0, new int[]{source}, 1, 0);
+            return new SearchResult(0, new int[]{source}, 1, 0); // we already know the answer so we just give it right away
         }
 
         double[] forwardDist = new double[n];
         double[] backwardDist = new double[n];
-        Arrays.fill(forwardDist, Double.POSITIVE_INFINITY);
+        // change to infinity because javas default is 0 and zero in our graph actually means a node
+        Arrays.fill(forwardDist, Double.POSITIVE_INFINITY); 
         Arrays.fill(backwardDist, Double.POSITIVE_INFINITY);
         forwardDist[source] = 0;
         backwardDist[target] = 0;
 
-        // forwardPrev[v] points from v toward the source.
-        // backwardNext[v] points from v toward the target (in the original graph).
-        int[] forwardPrev = new int[n];
+
+        int[] forwardPrev = new int[n]; 
         int[] backwardNext = new int[n];
+
+        // change to -1 because javas default is 0 and zero in our graph actually means a node. so default it would mean that we can reach all node from 0
         Arrays.fill(forwardPrev, -1);
         Arrays.fill(backwardNext, -1);
 
         boolean[] forwardSettled = new boolean[n];
         boolean[] backwardSettled = new boolean[n];
+
         PriorityQueue<Entry> forwardQueue = new PriorityQueue<>(Comparator.comparingDouble(Entry::distance));
         PriorityQueue<Entry> backwardQueue = new PriorityQueue<>(Comparator.comparingDouble(Entry::distance));
+
         forwardQueue.add(new Entry(source, 0));
         backwardQueue.add(new Entry(target, 0));
 
@@ -88,14 +97,13 @@ public class BidirectionalDijkstra implements PointToPointAlgorithm {
                     double weight = forward.edgeWeight(i);
                     double distance = forwardDist[u] + weight;
                     if (distance < forwardDist[v]) {
-                        forwardDist[v] = distance;
-                        forwardPrev[v] = u;
+                        forwardDist[v] = distance; 
+                        forwardPrev[v] = u; // which node discovered v
                         forwardQueue.add(new Entry(v, distance));
                     }
 
                     // Two tentative paths already form a complete source-target route.
-                    if (forwardDist[v] < Double.POSITIVE_INFINITY
-                            && backwardDist[v] < Double.POSITIVE_INFINITY) {
+                    if (forwardDist[v] < Double.POSITIVE_INFINITY && backwardDist[v] < Double.POSITIVE_INFINITY) {
                         double route = forwardDist[v] + backwardDist[v];
                         if (route < bestDistance) {
                             bestDistance = route;
