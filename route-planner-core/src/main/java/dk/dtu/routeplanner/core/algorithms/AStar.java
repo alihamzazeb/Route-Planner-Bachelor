@@ -11,24 +11,23 @@ import dk.dtu.routeplanner.core.graph.StraightLine;
 import dk.dtu.routeplanner.core.model.SearchResult;
 
 public class AStar implements PointToPointAlgorithm{
-    private final double c;
-    private final StraightLine straightLine;
-
+    private final Heuristic heuristic;
 
     public AStar(double c, StraightLine straightLine) {
-        this.c = c;
-        this.straightLine = straightLine;
+        this((node, target) -> c * straightLine.distance(node, target));
     }
 
-    private double guess(int node, int target){
-        return c * straightLine.distance(node, target);
-        
+    public AStar(Heuristic heuristic) {
+        this.heuristic = heuristic;
+    }
+
+    private double guess(int node, int target) {
+        return heuristic.estimate(node, target);
     }
 
     private record Entry(int node, double priority){
 
     }
-
 
 
     @Override

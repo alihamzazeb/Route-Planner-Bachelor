@@ -1,8 +1,9 @@
 package dk.dtu.routeplanner.core.algorithms.alt;
 
+import dk.dtu.routeplanner.core.algorithms.Heuristic;
 import dk.dtu.routeplanner.core.model.LandmarkPreprocessingResult;
 
-public class LandmarkHeuristic {
+public class LandmarkHeuristic implements Heuristic {
 
     private final LandmarkPreprocessingResult data;
 
@@ -10,6 +11,7 @@ public class LandmarkHeuristic {
         this.data = data;
     }
 
+    @Override
     public double estimate(int node, int target) {
 
         double best = 0.0;
