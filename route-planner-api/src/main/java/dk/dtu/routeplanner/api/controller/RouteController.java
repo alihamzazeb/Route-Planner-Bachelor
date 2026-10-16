@@ -30,6 +30,8 @@ public class RouteController {
         else if (algorithm.equalsIgnoreCase("bidirectional")) {
             result = service.findBidirectionalResult(source, target);
 
+        } else if (algorithm.equalsIgnoreCase("astar")) {
+            result = service.findAStarResult(source, target);
         } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown algorithm: " + algorithm);
         }
