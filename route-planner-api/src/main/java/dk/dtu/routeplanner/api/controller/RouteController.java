@@ -32,6 +32,8 @@ public class RouteController {
 
         } else if (algorithm.equalsIgnoreCase("astar")) {
             result = service.findAStarResult(source, target);
+        } else if (algorithm.equalsIgnoreCase("alt")) {
+            result = service.findALTResult(source, target);
         } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown algorithm: " + algorithm);
         }
