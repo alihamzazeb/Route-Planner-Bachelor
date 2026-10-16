@@ -75,4 +75,8 @@ public class RoutePlannerService {
     public SearchResult findALTResult(int source, int target) {
         return alt.findShortestPath(network.forward(), source, target);
     }
+
+    public int nodeCount() {
+        return network.forward().nodeCount();
+    }
 }

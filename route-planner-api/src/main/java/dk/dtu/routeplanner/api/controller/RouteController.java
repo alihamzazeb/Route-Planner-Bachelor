@@ -8,6 +8,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import dk.dtu.routeplanner.api.dto.RouteResponse;
 import dk.dtu.routeplanner.api.service.RoutePlannerService;
+import dk.dtu.routeplanner.api.validation.RouteRequestValidator;
 import dk.dtu.routeplanner.core.model.SearchResult;
 
 @RestController
@@ -19,8 +20,13 @@ public class RouteController {
         this.service = service;
     }
 
+    
+
     @GetMapping("/api/routes")
     public RouteResponse findRoute(@RequestParam("source") int source, @RequestParam("target") int target, @RequestParam(name = "algorithm", defaultValue = "dijkstra") String algorithm) {
+
+        RouteRequestValidator.validateNodes(source, target, service.nodeCount());
+        
         SearchResult result;
 
         if (algorithm.equalsIgnoreCase("dijkstra")){
@@ -41,6 +47,7 @@ public class RouteController {
         boolean reachable = Double.isFinite(result.distance());
 
         Double distance = reachable ? result.distance() : null;
+        
 
         return new RouteResponse(
                 algorithm.toLowerCase(java.util.Locale.ROOT),
