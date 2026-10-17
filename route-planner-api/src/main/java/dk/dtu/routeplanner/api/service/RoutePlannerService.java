@@ -90,4 +90,14 @@ public class RoutePlannerService {
 
         return new double[]{longitude, latitude};
     }
+
+    public double[][] pathCoordinates(int[] path) {
+        double[][] result = new double[path.length][];
+
+        for (int i = 0; i < path.length; i++) {
+            result[i] = nodeCoordinates(path[i]);
+        }
+
+        return result;
+    }
 }

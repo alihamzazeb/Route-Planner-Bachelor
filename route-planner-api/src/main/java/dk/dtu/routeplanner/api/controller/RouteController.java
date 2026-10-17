@@ -48,6 +48,7 @@ public class RouteController {
 
         Double distance = reachable ? result.distance() : null;
         
+        int[] path = result.path();
 
         return new RouteResponse(
                 algorithm.toLowerCase(java.util.Locale.ROOT),
@@ -55,7 +56,8 @@ public class RouteController {
                 target,
                 reachable,
                 distance,
-                result.path(),
+                path,
+                service.pathCoordinates(path),
                 result.settledCounter(),
                 result.relaxedCounter()
         );
