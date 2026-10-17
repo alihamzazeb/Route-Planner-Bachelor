@@ -92,28 +92,46 @@ html, body {
     color: #93a2b7;
 }
 
+.find-button,
+.compare-button,
+.clear-button {
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
 .find-button {
     background: #2563eb;
     color: white;
     border: none;
-    border-radius: 8px;
-    padding: 14px;
-    font-size: 14px;
     font-weight: 600;
-    cursor: pointer;
 }
 
 .find-button:hover {
     background: #1d4ed8;
 }
 
+.compare-button {
+    background: #293447;
+    color: #e2e8f0;
+    border: 1px solid #60a5fa;
+    font-weight: 600;
+}
+
+.compare-button:hover {
+    background: #334155;
+}
+
+.compare-button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
 .clear-button {
     background: transparent;
     color: #cbd5e1;
     border: 1px solid #465469;
-    border-radius: 8px;
-    padding: 12px;
-    cursor: pointer;
 }
 
 .clear-button:hover {
@@ -133,8 +151,17 @@ html, body {
     color: #8190a5;
 }
 
+.workspace {
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    background: #131e2b;
+}
+
 .map-container {
     position: relative;
+    height: 100%;
     min-width: 0;
     min-height: 0;
 }
@@ -165,7 +192,8 @@ html, body {
 }
 
 .route-results[hidden],
-#route-placeholder[hidden] {
+#route-placeholder[hidden],
+.comparison-section[hidden] {
     display: none;
 }
 
@@ -213,6 +241,152 @@ html, body {
     overflow-wrap: anywhere;
 }
 
+.comparison-section {
+    padding: 26px;
+}
+
+.comparison-inner {
+    background: #18212f;
+    border: 1px solid #354155;
+    border-radius: 12px;
+    padding: 28px;
+    color: #e2e8f0;
+}
+
+.comparison-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.comparison-label {
+    margin: 0 0 10px;
+    color: #60a5fa;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.3px;
+    text-transform: uppercase;
+}
+
+.comparison-header h2 {
+    margin: 0;
+    font-size: 24px;
+}
+
+#comparison-route {
+    margin: 8px 0 0;
+    color: #9aa8bd;
+    font-size: 13px;
+}
+
+.comparison-close {
+    background: transparent;
+    color: #aeb9c9;
+    border: 1px solid #465469;
+    border-radius: 7px;
+    padding: 9px 14px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.comparison-close:hover {
+    background: #293447;
+    color: white;
+}
+
+.comparison-description {
+    margin: 20px 0 14px;
+    color: #aeb9c9;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.comparison-table-container {
+    overflow-x: auto;
+}
+
+.comparison-table {
+    width: 100%;
+    min-width: 830px;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.comparison-table th,
+.comparison-table td {
+    border-bottom: 1px solid #354155;
+    padding: 18px 12px;
+}
+
+.comparison-table th {
+    color: #93a2b7;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+}
+
+.comparison-table td {
+    color: #e2e8f0;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.comparison-table td:first-child {
+    font-weight: 600;
+}
+
+.comparison-table th:nth-child(2),
+.comparison-table td:nth-child(2) {
+    width: 29%;
+}
+
+.comparison-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.comparison-table tbody tr:hover {
+    background: #202d40;
+}
+
+.comparison-table tbody tr.comparison-best td:first-child {
+    color: #93c5fd;
+}
+
+.comparison-track {
+    width: 100%;
+    height: 8px;
+    background: #344258;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.comparison-fill {
+    width: 0;
+    height: 100%;
+    background: #60a5fa;
+    border-radius: 8px;
+    transition: width 250ms ease;
+}
+
+#comparison-message {
+    margin: 18px 0 0;
+    font-size: 13px;
+    color: #cbd5e1;
+}
+
+#comparison-message.error {
+    color: #fca5a5;
+}
+
+.comparison-note {
+    margin: 9px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #8190a5;
+}
+
 @media (max-width: 700px) {
     .app {
         grid-template-columns: 1fr;
@@ -228,5 +402,17 @@ html, body {
         left: 12px;
         padding: 10px 14px;
         font-size: 12px;
+    }
+
+    .comparison-section {
+        padding: 12px;
+    }
+
+    .comparison-inner {
+        padding: 20px 16px;
+    }
+
+    .comparison-header h2 {
+        font-size: 20px;
     }
 }

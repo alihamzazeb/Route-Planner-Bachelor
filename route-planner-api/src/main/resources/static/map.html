@@ -4,11 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Route Planner</title>
-
     <link href="https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.css" rel="stylesheet">
-
     <link href="/map.css" rel="stylesheet">
 </head>
 
@@ -46,16 +43,14 @@
                     </div>
 
                     <button type="submit" class="find-button">Find Route</button>
-
+                    <button type="button" id="compare-all" class="compare-button">Compare All Algorithms</button>
                     <button type="button" id="clear-route" class="clear-button">Clear</button>
-
                     <p id="route-message" role="status" aria-live="polite"></p>
                 </form>
             </section>
 
             <section class="panel">
                 <h2>Route Details</h2>
-
                 <p id="route-placeholder">Calculate a route to see the results.</p>
 
                 <div id="route-results" class="route-results" hidden>
@@ -70,22 +65,18 @@
                             <span>Status</span>
                             <strong id="result-status">-</strong>
                         </div>
-
                         <div class="result-item">
                             <span>Algorithm</span>
                             <strong id="result-algorithm">-</strong>
                         </div>
-
                         <div class="result-item">
                             <span>Path nodes</span>
                             <strong id="result-path-nodes">-</strong>
                         </div>
-
                         <div class="result-item">
                             <span>Settled nodes</span>
                             <strong id="result-settled">-</strong>
                         </div>
-
                         <div class="result-item">
                             <span>Relaxed edges</span>
                             <strong id="result-relaxed">-</strong>
@@ -94,13 +85,81 @@
                 </div>
             </section>
 
-            <div class="sidebar-footer">DTU Bachelor Project</div>
+            <div class="sidebar-footer">DTU Bachelor Project (s235479)</div>
         </aside>
 
-        <main class="map-container">
-            <div id="map"></div>
+        <main class="workspace">
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="map-header">New York Road Network</div>
+            </div>
 
-            <div class="map-header">New York Road Network</div>
+            <section id="comparison-section" class="comparison-section" aria-labelledby="comparison-title" hidden>
+                <div class="comparison-inner">
+                    <div class="comparison-header">
+                        <div>
+                            <p class="comparison-label">Same source and destination</p>
+                            <h2 id="comparison-title">Algorithm Comparison</h2>
+                            <p id="comparison-route"></p>
+                        </div>
+                        <button type="button" id="hide-comparison" class="comparison-close">Hide</button>
+                    </div>
+
+                    <p class="comparison-description">
+                        Search work and query time for all four algorithms on the same route.
+                    </p>
+
+                    <div class="comparison-table-container">
+                        <table class="comparison-table">
+                            <thead>
+                                <tr>
+                                    <th>Algorithm</th>
+                                    <th>Relative settled nodes</th>
+                                    <th>Settled nodes</th>
+                                    <th>Relaxed edges</th>
+                                    <th>Time</th>
+                                    <th>Distance</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr data-algorithm="dijkstra">
+                                    <td>Dijkstra</td>
+                                    <td><div class="comparison-track"><div class="comparison-fill"></div></div></td>
+                                    <td data-field="settled">—</td>
+                                    <td data-field="relaxed">—</td>
+                                    <td data-field="time">—</td>
+                                    <td data-field="distance">—</td>
+                                </tr>
+                                <tr data-algorithm="bidirectional">
+                                    <td>Bidirectional Dijkstra</td>
+                                    <td><div class="comparison-track"><div class="comparison-fill"></div></div></td>
+                                    <td data-field="settled">—</td>
+                                    <td data-field="relaxed">—</td>
+                                    <td data-field="time">—</td>
+                                    <td data-field="distance">—</td>
+                                </tr>
+                                <tr data-algorithm="astar">
+                                    <td>A*</td>
+                                    <td><div class="comparison-track"><div class="comparison-fill"></div></div></td>
+                                    <td data-field="settled">—</td>
+                                    <td data-field="relaxed">—</td>
+                                    <td data-field="time">—</td>
+                                    <td data-field="distance">—</td>
+                                </tr>
+                                <tr data-algorithm="alt">
+                                    <td>ALT</td>
+                                    <td><div class="comparison-track"><div class="comparison-fill"></div></div></td>
+                                    <td data-field="settled">—</td>
+                                    <td data-field="relaxed">—</td>
+                                    <td data-field="time">—</td>
+                                    <td data-field="distance">—</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p id="comparison-message" role="status" aria-live="polite" hidden></p>
+                </div>
+            </section>
         </main>
     </div>
 

@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import dk.dtu.routeplanner.api.dto.ComparisonResponse;
 import dk.dtu.routeplanner.api.dto.RouteResponse;
 import dk.dtu.routeplanner.api.service.RoutePlannerService;
 import dk.dtu.routeplanner.api.validation.RouteRequestValidator;
@@ -62,5 +63,20 @@ public class RouteController {
                 result.relaxedCounter()
         );
     }
+
+    @GetMapping("/api/routes/compare")
+    public ComparisonResponse compareRoutes(
+            @RequestParam("source") int source,
+            @RequestParam("target") int target
+    ) {
+        RouteRequestValidator.validateNodes(source, target, service.nodeCount());
+
+        return new ComparisonResponse(
+                source,
+                target,
+                service.compareAlgorithms(source, target)
+        );
+    }
+
 
 }

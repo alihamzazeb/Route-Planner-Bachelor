@@ -2,13 +2,16 @@ package dk.dtu.routeplanner.api.service;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import dk.dtu.routeplanner.api.dto.ComparisonResult;
 import dk.dtu.routeplanner.core.algorithms.AStar;
 import dk.dtu.routeplanner.core.algorithms.BidirectionalDijkstra;
 import dk.dtu.routeplanner.core.algorithms.Dijkstra;
+import dk.dtu.routeplanner.core.algorithms.PointToPointAlgorithm;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkHeuristic;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkPreprocessor;
 import dk.dtu.routeplanner.core.algorithms.alt.RandomLandmarkSelector;
@@ -100,4 +103,42 @@ public class RoutePlannerService {
 
         return result;
     }
+
+
+
+
+    public List<ComparisonResult> compareAlgorithms(int source, int target) {
+        return List.of(
+                measureAlgorithm("dijkstra", dijkstra, source, target),
+                measureAlgorithm("bidirectional", bidirectional, source, target),
+                measureAlgorithm("astar", aStar, source, target),
+                measureAlgorithm("alt", alt, source, target)
+        );
+    }
+
+    private ComparisonResult measureAlgorithm(
+            String name,
+            PointToPointAlgorithm algorithm,
+            int source,
+            int target
+    ) {
+        long start = System.nanoTime();
+
+        SearchResult result = algorithm.findShortestPath(network.forward(), source, target);
+
+        double timeMs = (System.nanoTime() - start) / 1000000.0;
+
+        boolean reachable = Double.isFinite(result.distance());
+
+        return new ComparisonResult(
+                name,
+                reachable,
+                reachable ? result.distance() : null,
+                result.path().length,
+                result.settledCounter(),
+                result.relaxedCounter(),
+                timeMs
+        );
+    }
+
 }
