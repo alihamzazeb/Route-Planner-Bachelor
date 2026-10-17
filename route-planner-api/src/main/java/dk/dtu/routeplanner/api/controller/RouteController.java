@@ -64,19 +64,24 @@ public class RouteController {
         );
     }
 
+
     @GetMapping("/api/routes/compare")
     public ComparisonResponse compareRoutes(
             @RequestParam("source") int source,
-            @RequestParam("target") int target
+            @RequestParam("target") int target,
+            @RequestParam(name = "algorithm", defaultValue = "dijkstra") String algorithm
     ) {
         RouteRequestValidator.validateNodes(source, target, service.nodeCount());
 
-        return new ComparisonResponse(
-                source,
-                target,
-                service.compareAlgorithms(source, target)
-        );
+        String selectedAlgorithm = algorithm.toLowerCase(java.util.Locale.ROOT);
+
+        if (!java.util.Set.of("dijkstra", "bidirectional", "astar", "alt").contains(selectedAlgorithm)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown algorithm: " + algorithm);
+        }
+
+        return service.compareAlgorithms(source, target, selectedAlgorithm);
     }
+
 
 
 }

@@ -7,7 +7,9 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import dk.dtu.routeplanner.api.dto.ComparisonResponse;
 import dk.dtu.routeplanner.api.dto.ComparisonResult;
+import dk.dtu.routeplanner.api.dto.RouteResponse;
 import dk.dtu.routeplanner.core.algorithms.AStar;
 import dk.dtu.routeplanner.core.algorithms.BidirectionalDijkstra;
 import dk.dtu.routeplanner.core.algorithms.Dijkstra;
@@ -105,18 +107,51 @@ public class RoutePlannerService {
     }
 
 
+    public ComparisonResponse compareAlgorithms(int source, int target, String selectedAlgorithm) {
 
+        MeasuredRoute dijkstraRun = measureAlgorithm("dijkstra", dijkstra, source, target);
+        MeasuredRoute bidirectionalRun = measureAlgorithm("bidirectional", bidirectional, source, target);
+        MeasuredRoute aStarRun = measureAlgorithm("astar", aStar, source, target);
+        MeasuredRoute altRun = measureAlgorithm("alt", alt, source, target);
 
-    public List<ComparisonResult> compareAlgorithms(int source, int target) {
-        return List.of(
-                measureAlgorithm("dijkstra", dijkstra, source, target),
-                measureAlgorithm("bidirectional", bidirectional, source, target),
-                measureAlgorithm("astar", aStar, source, target),
-                measureAlgorithm("alt", alt, source, target)
+        MeasuredRoute selected = switch (selectedAlgorithm) {
+            case "dijkstra" -> dijkstraRun;
+            case "bidirectional" -> bidirectionalRun;
+            case "astar" -> aStarRun;
+            case "alt" -> altRun;
+            default -> throw new IllegalArgumentException("Unknown algorithm: " + selectedAlgorithm);
+        };
+
+        SearchResult result = selected.result();
+        boolean reachable = Double.isFinite(result.distance());
+        int[] path = result.path();
+
+        RouteResponse route = new RouteResponse(
+                selectedAlgorithm,
+                source,
+                target,
+                reachable,
+                reachable ? result.distance() : null,
+                path,
+                pathCoordinates(path),
+                result.settledCounter(),
+                result.relaxedCounter()
+        );
+
+        return new ComparisonResponse(
+                source,
+                target,
+                route,
+                List.of(
+                        dijkstraRun.comparison(),
+                        bidirectionalRun.comparison(),
+                        aStarRun.comparison(),
+                        altRun.comparison()
+                )
         );
     }
 
-    private ComparisonResult measureAlgorithm(
+    private MeasuredRoute measureAlgorithm(
             String name,
             PointToPointAlgorithm algorithm,
             int source,
@@ -127,10 +162,9 @@ public class RoutePlannerService {
         SearchResult result = algorithm.findShortestPath(network.forward(), source, target);
 
         double timeMs = (System.nanoTime() - start) / 1000000.0;
-
         boolean reachable = Double.isFinite(result.distance());
 
-        return new ComparisonResult(
+        ComparisonResult comparison = new ComparisonResult(
                 name,
                 reachable,
                 reachable ? result.distance() : null,
@@ -139,6 +173,15 @@ public class RoutePlannerService {
                 result.relaxedCounter(),
                 timeMs
         );
+
+        return new MeasuredRoute(result, comparison);
     }
+
+    private record MeasuredRoute(
+            SearchResult result,
+            ComparisonResult comparison
+    ) {
+    }
+
 
 }

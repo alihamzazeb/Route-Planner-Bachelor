@@ -16,6 +16,10 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 
 const routeForm = document.getElementById("route-form");
+const sourceInput = document.getElementById("source");
+const targetInput = document.getElementById("target");
+const algorithmInput = document.getElementById("algorithm");
+const findButton = routeForm.querySelector(".find-button");
 const clearButton = document.getElementById("clear-route");
 const routeMessage = document.getElementById("route-message");
 const routeResults = document.getElementById("route-results");
@@ -123,6 +127,16 @@ function drawRoute(coordinates) {
     map.fitBounds(bounds, { padding: 60, maxZoom: 15 });
 }
 
+function formatDistance(distance) {
+    return `${(distance / 10000).toFixed(2)} km`;
+}
+
+function setComparisonMessage(message, isError = false) {
+    comparisonMessage.textContent = message;
+    comparisonMessage.hidden = !message;
+    comparisonMessage.classList.toggle("error", isError);
+}
+
 function resetComparison() {
     for (const row of document.querySelectorAll(".comparison-table tbody tr")) {
         row.classList.remove("comparison-best");
@@ -159,61 +173,89 @@ function showComparison(results) {
             `${result.timeMs.toFixed(2)} ms`;
 
         row.querySelector('[data-field="distance"]').textContent =
-            result.reachable ? `${(result.distance / 10000).toFixed(2)} km` : "No path";
+            result.reachable ? formatDistance(result.distance) : "No path";
 
         row.classList.toggle("comparison-best", result.reachable && result.settledNodes === leastSettled);
     }
 
 
+
     if (reachable.length === 0) {
-        comparisonMessage.hidden = false;
-        comparisonMessage.textContent = "No route exists between these nodes.";
+        setComparisonMessage("No route exists between these nodes.");
     } else if (reachable.length !== results.length ||
             results.some(result => Math.abs(result.distance - reachable[0].distance) > 0.000001)) {
-        comparisonMessage.hidden = false;
-        comparisonMessage.textContent = "The algorithms did not return the same distance. Check the results.";
-        comparisonMessage.classList.add("error");
+        setComparisonMessage("The algorithms did not return the same distance. Check the results.", true);
     } else {
-        comparisonMessage.textContent = "";
-        comparisonMessage.hidden = true;
+        setComparisonMessage("");
     }
 
+
 }
-routeForm.addEventListener("input", () => {
+
+function resetResults() {
     routeRequestId++;
     comparisonRequestId++;
 
+    findButton.disabled = false;
+    compareButton.disabled = false;
+
     routeMessage.textContent = "";
+    routeMessage.classList.remove("error");
+
     routeResults.hidden = true;
     routePlaceholder.hidden = false;
     comparisonSection.hidden = true;
 
-    compareButton.disabled = false;
     clearRoute();
-});
+}
+
+routeForm.addEventListener("input", resetResults);
+
+
 
 routeForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const source = Number(document.getElementById("source").value);
-    const target = Number(document.getElementById("target").value);
-    const algorithm = document.getElementById("algorithm").value;
+    const source = Number(sourceInput.value);
+    const target = Number(targetInput.value);
+    const algorithm = algorithmInput.value;
     const params = new URLSearchParams({ source, target, algorithm });
+    const requestId = ++routeRequestId;
 
     comparisonRequestId++;
     compareButton.disabled = false;
     comparisonSection.hidden = true;
+
     clearRoute();
+
     routeResults.hidden = true;
     routePlaceholder.hidden = false;
     routeMessage.textContent = "Calculating route...";
+    routeMessage.classList.remove("error");
+
+    findButton.disabled = true;
+    workspace.scrollTo({ top: 0, behavior: "smooth" });
 
     try {
         const response = await fetch(`/api/routes?${params}`);
         const data = await response.json();
 
+        if (requestId !== routeRequestId) {
+            return;
+        }
+
         if (!response.ok) {
             throw new Error(data.message || "Route request failed");
+        }
+
+        await mapReady;
+
+        if (requestId !== routeRequestId) {
+            return;
+        }
+
+        if (data.reachable) {
+            drawRoute(data.coordinates);
         }
 
         document.getElementById("result-algorithm").textContent =
@@ -223,7 +265,7 @@ routeForm.addEventListener("submit", async (event) => {
             data.reachable ? "Reachable" : "Unreachable";
 
         document.getElementById("result-distance").textContent =
-            data.reachable ? `${(data.distance / 10000).toFixed(2)} km` : "-";
+            data.reachable ? formatDistance(data.distance) : "-";
 
         document.getElementById("result-path-nodes").textContent =
             data.path.length.toLocaleString("en-US");
@@ -234,12 +276,6 @@ routeForm.addEventListener("submit", async (event) => {
         document.getElementById("result-relaxed").textContent =
             data.relaxedEdges.toLocaleString("en-US");
 
-        await mapReady;
-
-        if (data.reachable) {
-            drawRoute(data.coordinates);
-        }
-
         routePlaceholder.hidden = true;
         routeResults.hidden = false;
 
@@ -248,28 +284,47 @@ routeForm.addEventListener("submit", async (event) => {
             : "No route exists between these nodes.";
 
     } catch (error) {
+        if (requestId !== routeRequestId) {
+            return;
+        }
+
         clearRoute();
         routeResults.hidden = true;
         routePlaceholder.hidden = false;
+
         routeMessage.textContent = `Error: ${error.message}`;
+        routeMessage.classList.add("error");
+
+    } finally {
+        if (requestId === routeRequestId) {
+            findButton.disabled = false;
+        }
     }
 });
+
 
 compareButton.addEventListener("click", async () => {
     if (!routeForm.reportValidity()) {
         return;
     }
+    routeRequestId++;
+
+    routeForm.querySelector(".find-button").disabled = false;
+
+    clearRoute();
+    routeResults.hidden = true;
+    routePlaceholder.hidden = false;
+    routeMessage.textContent = "";
 
     const source = document.getElementById("source").value;
     const target = document.getElementById("target").value;
-    const params = new URLSearchParams({ source, target });
+    const algorithm = document.getElementById("algorithm").value;
+    const params = new URLSearchParams({ source, target, algorithm });
     const requestId = ++comparisonRequestId;
 
     resetComparison();
     comparisonRoute.textContent = `Node ${source} → Node ${target}`;
-    comparisonMessage.hidden = false;
-    comparisonMessage.textContent = "Calculating comparison...";
-    comparisonMessage.classList.remove("error");
+    setComparisonMessage("Calculating comparison...");
     comparisonSection.hidden = false;
     compareButton.disabled = true;
 
@@ -286,16 +341,30 @@ compareButton.addEventListener("click", async () => {
         if (!response.ok) {
             throw new Error(data.message || "Comparison request failed");
         }
+        if (!Array.isArray(data.results) || data.results.length !== 4) {
+            throw new Error("Incomplete comparison results");
+        }
 
+        
+        if (!data.route || !Array.isArray(data.results) || data.results.length !== 4) {
+            throw new Error("Incomplete comparison results");
+        }
+
+        await mapReady;
+
+        if (requestId !== comparisonRequestId) {
+            return;
+        }
+
+        showRouteResult(data.route);
         showComparison(data.results);
+
     } catch (error) {
         if (requestId !== comparisonRequestId) {
             return;
         }
         
-        comparisonMessage.hidden = false;
-        comparisonMessage.textContent = `Error: ${error.message}`;
-        comparisonMessage.classList.add("error");
+        setComparisonMessage(`Error: ${error.message}`, true);
     } finally {
         if (requestId === comparisonRequestId) {
             compareButton.disabled = false;
@@ -309,14 +378,44 @@ hideComparison.addEventListener("click", () => {
     comparisonSection.hidden = true;
 });
 
+
 clearButton.addEventListener("click", () => {
-    comparisonRequestId++;
-    compareButton.disabled = false;
     routeForm.reset();
-    routeMessage.textContent = "";
-    routeResults.hidden = true;
-    routePlaceholder.hidden = false;
-    comparisonSection.hidden = true;
-    clearRoute();
+    resetResults();
     workspace.scrollTo({ top: 0, behavior: "smooth" });
 });
+
+
+function showRouteResult(route) {
+    if (route.reachable) {
+        drawRoute(route.coordinates);
+    } else {
+        clearRoute();
+    }
+
+    document.getElementById("result-algorithm").textContent =
+        route.algorithm.toUpperCase();
+
+    document.getElementById("result-status").textContent =
+        route.reachable ? "Reachable" : "Unreachable";
+
+    document.getElementById("result-distance").textContent =
+        route.reachable ? `${(route.distance / 10000).toFixed(2)} km` : "-";
+
+    document.getElementById("result-path-nodes").textContent =
+        route.path.length.toLocaleString("en-US");
+
+    document.getElementById("result-settled").textContent =
+        route.settledNodes.toLocaleString("en-US");
+
+    document.getElementById("result-relaxed").textContent =
+        route.relaxedEdges.toLocaleString("en-US");
+
+    routePlaceholder.hidden = true;
+    routeResults.hidden = false;
+
+    routeMessage.textContent = route.reachable
+        ? "Route calculated successfully."
+        : "No route exists between these nodes.";
+}
+

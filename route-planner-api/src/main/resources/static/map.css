@@ -123,6 +123,7 @@ html, body {
     background: #334155;
 }
 
+.find-button:disabled,
 .compare-button:disabled {
     opacity: 0.6;
     cursor: wait;
@@ -143,6 +144,10 @@ html, body {
     font-size: 13px;
     line-height: 1.5;
     color: #cbd5e1;
+}
+
+#route-message.error {
+    color: #fca5a5;
 }
 
 .sidebar-footer {
@@ -380,12 +385,17 @@ html, body {
     color: #fca5a5;
 }
 
-.comparison-note {
-    margin: 9px 0 0;
-    font-size: 12px;
-    line-height: 1.5;
-    color: #8190a5;
+
+.find-button:focus-visible,
+.compare-button:focus-visible,
+.clear-button:focus-visible,
+.comparison-close:focus-visible,
+.form-group input:focus-visible,
+.form-group select:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
 }
+
 
 @media (max-width: 700px) {
     .app {
