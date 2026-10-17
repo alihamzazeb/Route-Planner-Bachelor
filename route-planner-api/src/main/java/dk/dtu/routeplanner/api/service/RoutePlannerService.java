@@ -27,6 +27,7 @@ public class RoutePlannerService {
     private final BidirectionalDijkstra bidirectional;
     private final AStar aStar;
     private final AStar alt;
+    private final Coordinates coordinates;
 
 
 
@@ -38,7 +39,7 @@ public class RoutePlannerService {
         this.bidirectional = new BidirectionalDijkstra(network);
 
         // A*
-        Coordinates coordinates = loader.loadCoordinates(Path.of(coordinatesPath));
+        this.coordinates = loader.loadCoordinates(Path.of(coordinatesPath));
 
         StraightLine straightLine = new StraightLine(coordinates);
 
@@ -78,5 +79,15 @@ public class RoutePlannerService {
 
     public int nodeCount() {
         return network.forward().nodeCount();
+    }
+
+
+    public double[] nodeCoordinates(int node) {
+
+        // the map expects this, not the one we have in our file
+        double longitude = coordinates.longitude()[node] / 1000000.0;
+        double latitude = coordinates.latitude()[node] / 1000000.0;
+
+        return new double[]{longitude, latitude};
     }
 }

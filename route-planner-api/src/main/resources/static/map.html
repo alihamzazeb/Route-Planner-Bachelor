@@ -7,20 +7,104 @@
 
     <title>Route Planner</title>
 
-    <link
-        href="https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.css"
-        rel="stylesheet"
-    >
+    <link href="https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.css" rel="stylesheet">
 
     <link href="/map.css" rel="stylesheet">
 </head>
 
 <body>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="brand">
+                <h1>Route Planner</h1>
+                <p>Shortest Path Visualization</p>
+            </div>
 
-    <div id="map"></div>
+            <section class="panel">
+                <h2>Plan a Route</h2>
+                <p>Choose a starting node, destination, and routing algorithm.</p>
+
+                <form id="route-form">
+                    <div class="form-group">
+                        <label for="source">Starting node</label>
+                        <input type="number" id="source" placeholder="e.g. 10" min="0" step="1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="target">Destination node</label>
+                        <input type="number" id="target" placeholder="e.g. 500" min="0" step="1" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="algorithm">Routing algorithm</label>
+                        <select id="algorithm">
+                            <option value="dijkstra">Dijkstra</option>
+                            <option value="bidirectional">Bidirectional Dijkstra</option>
+                            <option value="astar">A*</option>
+                            <option value="alt">ALT</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="find-button">Find Route</button>
+
+                    <button type="button" id="clear-route" class="clear-button">Clear</button>
+
+                    <p id="route-message" role="status" aria-live="polite"></p>
+                </form>
+            </section>
+
+            <section class="panel">
+                <h2>Route Details</h2>
+
+                <p id="route-placeholder">Calculate a route to see the results.</p>
+
+                <div id="route-results" class="route-results" hidden>
+                    <div class="result-distance">
+                        <span>Shortest-path distance</span>
+                        <strong id="result-distance">-</strong>
+                        <small>Graph distance units</small>
+                    </div>
+
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <span>Status</span>
+                            <strong id="result-status">-</strong>
+                        </div>
+
+                        <div class="result-item">
+                            <span>Algorithm</span>
+                            <strong id="result-algorithm">-</strong>
+                        </div>
+
+                        <div class="result-item">
+                            <span>Path nodes</span>
+                            <strong id="result-path-nodes">-</strong>
+                        </div>
+
+                        <div class="result-item">
+                            <span>Settled nodes</span>
+                            <strong id="result-settled">-</strong>
+                        </div>
+
+                        <div class="result-item">
+                            <span>Relaxed edges</span>
+                            <strong id="result-relaxed">-</strong>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="sidebar-footer">DTU Bachelor Project</div>
+        </aside>
+
+        <main class="map-container">
+            <div id="map"></div>
+
+            <div class="map-header">New York Road Network</div>
+        </main>
+    </div>
 
     <script src="/config.local.js"></script>
     <script type="module" src="/map.js"></script>
-
 </body>
 </html>
