@@ -1,5 +1,7 @@
 package dk.dtu.routeplanner.core.algorithms;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import dk.dtu.routeplanner.core.graph.CsrGraph;
 import dk.dtu.routeplanner.core.graph.Graph;
 import dk.dtu.routeplanner.core.graph.RoadNetwork;
+import dk.dtu.routeplanner.core.loader.DimacsLoader;
 import dk.dtu.routeplanner.core.model.SearchResult;
 
 class BidirectionalDijkstraTest {
@@ -118,11 +121,65 @@ class BidirectionalDijkstraTest {
     }
 
     @Test
+    void agreesWithDijkstraOnNewYork() throws IOException {
+        RoadNetwork network = new DimacsLoader().load(Path.of("../data/USA-road-d.NY.gr"));
+        Graph graph = network.forward();
+        BidirectionalDijkstra bidirectional = new BidirectionalDijkstra(network);
+        Dijkstra reference = new Dijkstra();
+        Random random = new Random(1234);
+        long dijkstraSettled = 0;
+        long bidirectionalSettled = 0;
+
+        for (int i = 0; i < 20; i++) {
+            int source = random.nextInt(graph.nodeCount());
+            int target = random.nextInt(graph.nodeCount());
+            SearchResult expected = reference.findShortestPath(graph, source, target);
+            SearchResult actual = bidirectional.findShortestPath(graph, source, target);
+
+            assertEquals(expected.distance(), actual.distance(), 1e-9,
+                    "from " + source + " to " + target);
+
+            if (Double.isFinite(actual.distance())) {
+                int[] path = actual.path();
+                assertEquals(source, path[0]);
+                assertEquals(target, path[path.length - 1]);
+                assertEquals(actual.distance(), pathLength(graph, path), 1e-9,
+                        "path from " + source + " to " + target);
+            } else {
+                assertEquals(0, actual.path().length);
+            }
+
+            dijkstraSettled += expected.settledCounter();
+            bidirectionalSettled += actual.settledCounter();
+        }
+
+        assertTrue(bidirectionalSettled < dijkstraSettled,
+                "bidirectional settled " + bidirectionalSettled + " nodes, Dijkstra " + dijkstraSettled);
+    }
+
+    @Test
     void rejectsInvalidNode() {
         RoadNetwork network = example();
         BidirectionalDijkstra algorithm = new BidirectionalDijkstra(network);
         assertThrows(IllegalArgumentException.class,
                 () -> algorithm.findShortestPath(network.forward(), -1, 3));
+    }
+
+
+    private double pathLength(Graph graph, int[] path) {
+        double total = 0;
+        for (int i = 1; i < path.length; i++) {
+            int from = path[i - 1];
+            int to = path[i];
+            double weight = Double.POSITIVE_INFINITY;
+            for (int edge = graph.edgeStart(from); edge < graph.edgeEnd(from); edge++) {
+                if (graph.edgeTarget(edge) == to) {
+                    weight = Math.min(weight, graph.edgeWeight(edge));
+                }
+            }
+            total += weight;
+        }
+        return total;
     }
 
     private Graph fromMatrix(double[][] weights, boolean reversed) {

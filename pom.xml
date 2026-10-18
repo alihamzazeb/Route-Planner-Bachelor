@@ -8,6 +8,7 @@
   <modules>
     <module>route-planner-core</module>
     <module>route-planner-api</module>
+    <module>route-planner-benchmark</module>
   </modules>
 
   <properties>
