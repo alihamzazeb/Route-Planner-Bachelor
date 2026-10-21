@@ -2,10 +2,7 @@
 package dk.dtu.routeplanner.benchmark;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -127,21 +124,6 @@ public class BenchmarkRunner {
                     "Only found " + reachablePairs.size() + " reachable pairs"
             );
         }
-
-        Path csvPath = Path.of("benchmark-data/workloads/NY-pairs-seed42.csv");
-
-        List<String> lines = new ArrayList<>();
-        lines.add("pair_id,source,target");
-
-        for (int i = 0; i < reachablePairs.size(); i++) {
-            int[] pair = reachablePairs.get(i);
-
-            lines.add((i + 1) + "," + pair[0] + "," + pair[1]);
-        }
-
-        Files.write(csvPath, lines, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
-
-        System.out.println("Workload saved to: " + csvPath);
 
         System.out.println("\nBenchmark workload completed");
         System.out.println("Reachable pairs: " + reachablePairs.size());
