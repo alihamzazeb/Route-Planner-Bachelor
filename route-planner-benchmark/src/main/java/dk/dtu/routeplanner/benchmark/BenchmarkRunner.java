@@ -52,13 +52,7 @@ public class BenchmarkRunner {
                 "ALT"
         };
 
-        int[][] queries = {
-                {10, 500},
-                {20, 2000},
-                {100, 500},
-                {100, 2000},
-                {500, 2000}
-        };
+        int[][] queries = Workloads.generatePairs(graph.nodeCount(), 100, 42L);
 
         System.out.println("New York road network");
         System.out.println("Nodes: " + graph.nodeCount());
