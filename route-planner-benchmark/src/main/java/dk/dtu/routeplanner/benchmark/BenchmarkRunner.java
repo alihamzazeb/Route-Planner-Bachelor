@@ -3,6 +3,8 @@ package dk.dtu.routeplanner.benchmark;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import dk.dtu.routeplanner.core.algorithms.AStar;
 import dk.dtu.routeplanner.core.algorithms.BidirectionalDijkstra;
@@ -52,14 +54,20 @@ public class BenchmarkRunner {
                 "ALT"
         };
 
-        int[][] queries = Workloads.generatePairs(graph.nodeCount(), 100, 42L);
+        int[][] candidates = Workloads.generatePairs(graph.nodeCount(), 1000, 42L);
+
+        List<int[]> reachablePairs = new ArrayList<>();
 
         System.out.println("New York road network");
         System.out.println("Nodes: " + graph.nodeCount());
 
         int unreachableCount = 0;
         
-        for (int[] query : queries) {
+        for (int[] query : candidates) {
+            // stop when we have 100 accepted pairs
+            if (reachablePairs.size() == 100) {
+                break;
+            }
             int source = query[0];
             int target = query[1];
 
@@ -84,6 +92,7 @@ public class BenchmarkRunner {
 
                     if (!Double.isFinite(expectedDistance)) {
                         unreachableCount++;
+                        break;
                     }
                 } 
                 // check if we get the same distance as the one we got with dijkstra
@@ -101,10 +110,24 @@ public class BenchmarkRunner {
                 );
             }
 
+            if (!Double.isFinite(expectedDistance)) {
+                continue;
+            }
+
+            reachablePairs.add(query);
+
             System.out.println("All four algorithms agree.");
         }
         
-        System.out.println("Unreachable pairs: " + unreachableCount);
+        if (reachablePairs.size() != 100) {
+            throw new IllegalStateException(
+                    "Only found " + reachablePairs.size() + " reachable pairs"
+            );
+        }
+
+        System.out.println("\nBenchmark workload completed");
+        System.out.println("Reachable pairs: " + reachablePairs.size());
+        System.out.println("Rejected unreachable pairs: " + unreachableCount);
 
     }
 
