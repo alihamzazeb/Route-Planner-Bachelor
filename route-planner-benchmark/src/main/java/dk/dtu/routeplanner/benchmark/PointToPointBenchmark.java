@@ -11,10 +11,18 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
 
+import dk.dtu.routeplanner.core.algorithms.AStar;
+import dk.dtu.routeplanner.core.algorithms.BidirectionalDijkstra;
 import dk.dtu.routeplanner.core.algorithms.Dijkstra;
+import dk.dtu.routeplanner.core.algorithms.alt.LandmarkHeuristic;
+import dk.dtu.routeplanner.core.algorithms.alt.LandmarkPreprocessor;
+import dk.dtu.routeplanner.core.algorithms.alt.RandomLandmarkSelector;
+import dk.dtu.routeplanner.core.graph.Coordinates;
 import dk.dtu.routeplanner.core.graph.Graph;
 import dk.dtu.routeplanner.core.graph.RoadNetwork;
+import dk.dtu.routeplanner.core.graph.StraightLine;
 import dk.dtu.routeplanner.core.loader.DimacsLoader;
+import dk.dtu.routeplanner.core.model.LandmarkPreprocessingResult;
 import dk.dtu.routeplanner.core.model.SearchResult;
 
 @State(Scope.Benchmark)
@@ -22,6 +30,10 @@ public class PointToPointBenchmark {
 
     private Graph graph;
     private Dijkstra dijkstra;
+    private BidirectionalDijkstra bidirectionalAlgorithm;
+    private AStar aStarAlgorithm;
+    private AStar altAlgorithm;
+
 
     @Setup(Level.Trial)
     public void setup() throws IOException {
@@ -30,9 +42,27 @@ public class PointToPointBenchmark {
 
         RoadNetwork network = loader.load(Path.of("data/USA-road-d.NY.gr"));
 
+        Coordinates coordinates = loader.loadCoordinates(Path.of("data/USA-road-d.NY.co"));
+
         graph = network.forward();
+
+        StraightLine straightLine = new StraightLine(coordinates);
+        double c = straightLine.smallestLimit(graph);
+
+        int[] landmarks =
+                new RandomLandmarkSelector().select(graph, 4, 42L);
+
+        LandmarkPreprocessingResult preprocessing = new LandmarkPreprocessor(network).preprocess(landmarks);
+
         dijkstra = new Dijkstra();
+
+        bidirectionalAlgorithm = new BidirectionalDijkstra(network);
+
+        aStarAlgorithm = new AStar(c, straightLine);
+
+        altAlgorithm = new AStar(new LandmarkHeuristic(preprocessing));
     }
+
 
     @Benchmark
     public void dijkstra(Blackhole blackhole) {
@@ -41,4 +71,30 @@ public class PointToPointBenchmark {
 
         blackhole.consume(result);
     }
+
+
+    @Benchmark
+    public void bidirectionalDijkstra(Blackhole blackhole) {
+
+        SearchResult result = bidirectionalAlgorithm.findShortestPath(graph, 10, 500);
+
+        blackhole.consume(result);
+    }
+
+    @Benchmark
+    public void aStar(Blackhole blackhole) {
+
+        SearchResult result = aStarAlgorithm.findShortestPath(graph, 10, 500);
+
+        blackhole.consume(result);
+    }
+
+    @Benchmark
+    public void alt(Blackhole blackhole) {
+
+        SearchResult result = altAlgorithm.findShortestPath(graph, 10, 500);
+
+        blackhole.consume(result);
+    }
+
 }
