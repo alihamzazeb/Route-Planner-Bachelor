@@ -57,6 +57,8 @@ public class BenchmarkRunner {
         System.out.println("New York road network");
         System.out.println("Nodes: " + graph.nodeCount());
 
+        int unreachableCount = 0;
+        
         for (int[] query : queries) {
             int source = query[0];
             int target = query[1];
@@ -79,11 +81,14 @@ public class BenchmarkRunner {
                 // use djikstra as reference result that we compared with the others, to see if they are the same
                 if (i == 0) {
                     expectedDistance = result.distance();
+
+                    if (!Double.isFinite(expectedDistance)) {
+                        unreachableCount++;
+                    }
                 } 
                 // check if we get the same distance as the one we got with dijkstra
                 else if (!sameDistance(expectedDistance, result.distance())) {
-                    throw new IllegalStateException(
-                            names[i] + " returned an incorrect distance for " + source + " -> " + target);
+                    throw new IllegalStateException(names[i] + " returned an incorrect distance for " + source + " -> " + target);
                 }
 
                 System.out.printf(
@@ -98,6 +103,9 @@ public class BenchmarkRunner {
 
             System.out.println("All four algorithms agree.");
         }
+        
+        System.out.println("Unreachable pairs: " + unreachableCount);
+
     }
 
     private static boolean sameDistance(double a, double b) {
