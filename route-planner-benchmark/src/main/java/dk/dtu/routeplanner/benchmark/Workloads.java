@@ -4,6 +4,10 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
+import dk.dtu.routeplanner.core.algorithms.Dijkstra;
+import dk.dtu.routeplanner.core.graph.Graph;
+import dk.dtu.routeplanner.core.model.SearchResult;
+
 public class Workloads {
 
     public static int[][] generatePairs(int nodeCount, int count, long seed) {
@@ -48,4 +52,47 @@ public class Workloads {
         return pairs;
 
     }
+
+
+
+    public static int[][] generateReachablePairs(Graph graph, int count, long seed) {
+
+        if (count <= 0 || count > Integer.MAX_VALUE / 10) {
+            throw new IllegalArgumentException("Invalid pair count");
+        }
+
+        int[][] candidates = generatePairs(graph.nodeCount(), count * 10, seed);
+
+        int[][] reachablePairs = new int[count][2];
+
+        Dijkstra dijkstra = new Dijkstra();
+
+        int accepted = 0;
+
+        for (int[] pair : candidates) {
+
+            int source = pair[0];
+            int target = pair[1];
+
+            SearchResult result = dijkstra.findShortestPath(graph, source, target);
+
+            if (Double.isFinite(result.distance())) {
+
+                reachablePairs[accepted] = pair;
+                accepted++;
+
+                if (accepted == count) {
+                    break;
+                }
+            }
+        }
+
+        if (accepted != count) {
+            throw new IllegalStateException("Only found " + accepted + " reachable pairs");
+        }
+
+        return reachablePairs;
+    }
+
+
 }

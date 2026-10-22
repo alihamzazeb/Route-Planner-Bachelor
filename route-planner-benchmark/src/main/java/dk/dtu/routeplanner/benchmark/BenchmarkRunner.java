@@ -3,8 +3,6 @@ package dk.dtu.routeplanner.benchmark;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 import dk.dtu.routeplanner.core.algorithms.AStar;
 import dk.dtu.routeplanner.core.algorithms.BidirectionalDijkstra;
@@ -20,6 +18,7 @@ import dk.dtu.routeplanner.core.graph.StraightLine;
 import dk.dtu.routeplanner.core.loader.DimacsLoader;
 import dk.dtu.routeplanner.core.model.LandmarkPreprocessingResult;
 import dk.dtu.routeplanner.core.model.SearchResult;
+
 
 public class BenchmarkRunner {
 
@@ -54,20 +53,14 @@ public class BenchmarkRunner {
                 "ALT"
         };
 
-        int[][] candidates = Workloads.generatePairs(graph.nodeCount(), 1000, 42L);
 
-        List<int[]> reachablePairs = new ArrayList<>();
+        int[][] queries = Workloads.generateReachablePairs(graph, 100, 42L);
 
         System.out.println("New York road network");
         System.out.println("Nodes: " + graph.nodeCount());
 
-        int unreachableCount = 0;
-        
-        for (int[] query : candidates) {
-            // stop when we have 100 accepted pairs
-            if (reachablePairs.size() == 100) {
-                break;
-            }
+        for (int[] query : queries) {
+
             int source = query[0];
             int target = query[1];
 
@@ -75,29 +68,29 @@ public class BenchmarkRunner {
 
             double expectedDistance = Double.NaN;
 
-            // go through each algorithm we stored earlier
             for (int i = 0; i < algorithms.length; i++) {
+
                 long start = System.nanoTime();
 
-                SearchResult result =
-                        algorithms[i].findShortestPath(graph, source, target);
+                SearchResult result = algorithms[i].findShortestPath(graph, source, target);
 
                 long elapsed = System.nanoTime() - start;
 
                 validatePath(graph, source, target, result);
 
-                // use djikstra as reference result that we compared with the others, to see if they are the same
                 if (i == 0) {
+
                     expectedDistance = result.distance();
 
                     if (!Double.isFinite(expectedDistance)) {
-                        unreachableCount++;
-                        break;
+                        throw new IllegalStateException("Generated an unreachable route");
                     }
-                } 
-                // check if we get the same distance as the one we got with dijkstra
-                else if (!sameDistance(expectedDistance, result.distance())) {
-                    throw new IllegalStateException(names[i] + " returned an incorrect distance for " + source + " -> " + target);
+
+                } else if (!sameDistance(expectedDistance, result.distance())) {
+
+                    throw new IllegalStateException(
+                            names[i] + " returned an incorrect distance for " + source + " -> " + target
+                    );
                 }
 
                 System.out.printf(
@@ -110,24 +103,11 @@ public class BenchmarkRunner {
                 );
             }
 
-            if (!Double.isFinite(expectedDistance)) {
-                continue;
-            }
-
-            reachablePairs.add(query);
-
             System.out.println("All four algorithms agree.");
-        }
-        
-        if (reachablePairs.size() != 100) {
-            throw new IllegalStateException(
-                    "Only found " + reachablePairs.size() + " reachable pairs"
-            );
         }
 
         System.out.println("\nBenchmark workload completed");
-        System.out.println("Reachable pairs: " + reachablePairs.size());
-        System.out.println("Rejected unreachable pairs: " + unreachableCount);
+        System.out.println("Validated reachable pairs: " + queries.length);
 
     }
 
