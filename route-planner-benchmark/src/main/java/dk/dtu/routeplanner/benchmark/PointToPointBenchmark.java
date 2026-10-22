@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.OperationsPerInvocation;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
@@ -15,6 +16,7 @@ import org.openjdk.jmh.infra.Blackhole;
 import dk.dtu.routeplanner.core.algorithms.AStar;
 import dk.dtu.routeplanner.core.algorithms.BidirectionalDijkstra;
 import dk.dtu.routeplanner.core.algorithms.Dijkstra;
+import dk.dtu.routeplanner.core.algorithms.PointToPointAlgorithm;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkHeuristic;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkPreprocessor;
 import dk.dtu.routeplanner.core.algorithms.alt.RandomLandmarkSelector;
@@ -31,10 +33,11 @@ public class PointToPointBenchmark {
 
     private Graph graph;
     private int[][] queries;
-    private Dijkstra dijkstra;
-    private BidirectionalDijkstra bidirectionalAlgorithm;
-    private AStar aStarAlgorithm;
-    private AStar altAlgorithm;
+    private PointToPointAlgorithm algorithm;
+
+    @Param({"dijkstra", "bidirectional", "astar", "alt"})
+    public String algorithmName;
+
 
 
     @Setup(Level.Trial)
@@ -44,69 +47,58 @@ public class PointToPointBenchmark {
 
         RoadNetwork network = loader.load(Path.of("data/USA-road-d.NY.gr"));
 
-        Coordinates coordinates = loader.loadCoordinates(Path.of("data/USA-road-d.NY.co"));
-
         graph = network.forward();
 
-        StraightLine straightLine = new StraightLine(coordinates);
-        double c = straightLine.smallestLimit(graph);
-
-        int[] landmarks = new RandomLandmarkSelector().select(graph, 4, 42L);
-
-        LandmarkPreprocessingResult preprocessing = new LandmarkPreprocessor(network).preprocess(landmarks);
-
-        dijkstra = new Dijkstra();
-
-        bidirectionalAlgorithm = new BidirectionalDijkstra(network);
-
-        aStarAlgorithm = new AStar(c, straightLine);
-
-        altAlgorithm = new AStar(new LandmarkHeuristic(preprocessing));
-        
         queries = Workloads.generateReachablePairs(graph, 100, 42L);
 
+        switch (algorithmName) {
+
+            case "dijkstra" -> {
+                algorithm = new Dijkstra();
+            }
+
+            case "bidirectional" -> {
+                algorithm = new BidirectionalDijkstra(network);
+            }
+
+            case "astar" -> {
+                Coordinates coordinates = loader.loadCoordinates(Path.of("data/USA-road-d.NY.co"));
+
+                StraightLine straightLine = new StraightLine(coordinates);
+                double c = straightLine.smallestLimit(graph);
+
+                algorithm = new AStar(c, straightLine);
+            }
+
+            case "alt" -> {
+                int[] landmarks = new RandomLandmarkSelector().select(graph, 4, 42L);
+
+                LandmarkPreprocessingResult preprocessing = new LandmarkPreprocessor(network).preprocess(landmarks);
+
+                algorithm = new AStar(new LandmarkHeuristic(preprocessing));
+            }
+
+            default -> throw new IllegalArgumentException(
+                    "Unknown algorithm: " + algorithmName
+            );
+        }
     }
+
+
 
 
     @Benchmark
     @OperationsPerInvocation(100)
-    public void dijkstra(Blackhole blackhole) {
+    public void search(Blackhole blackhole) {
+
         for (int[] query : queries) {
-            SearchResult result = dijkstra.findShortestPath(graph, query[0], query[1]);
+
+            SearchResult result = algorithm.findShortestPath(graph, query[0], query[1]);
 
             blackhole.consume(result);
         }
     }
 
-    @Benchmark
-    @OperationsPerInvocation(100)
-    public void bidirectionalDijkstra(Blackhole blackhole) {
-        for (int[] query : queries) {
-            SearchResult result = bidirectionalAlgorithm.findShortestPath(graph, query[0], query[1]);
-
-            blackhole.consume(result);
-        }
-    }
-
-    @Benchmark
-    @OperationsPerInvocation(100)
-    public void aStar(Blackhole blackhole) {
-        for (int[] query : queries) {
-            SearchResult result = aStarAlgorithm.findShortestPath(graph, query[0], query[1]);
-
-            blackhole.consume(result);
-        }
-    }
-
-    @Benchmark
-    @OperationsPerInvocation(100)
-    public void alt(Blackhole blackhole) {
-        for (int[] query : queries) {
-            SearchResult result = altAlgorithm.findShortestPath(graph, query[0], query[1]);
-
-            blackhole.consume(result);
-        }
-    }
 
 
 }
