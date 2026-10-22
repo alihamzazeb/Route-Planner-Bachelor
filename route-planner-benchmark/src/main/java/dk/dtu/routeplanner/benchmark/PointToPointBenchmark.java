@@ -49,7 +49,7 @@ public class PointToPointBenchmark {
 
         graph = network.forward();
 
-        queries = Workloads.generateReachablePairs(graph, 100, 42L);
+        queries = Workloads.readPairs(BenchmarkConfig.NY_WORKLOAD, graph.nodeCount(), BenchmarkConfig.PAIR_COUNT);
 
         switch (algorithmName) {
 
@@ -71,7 +71,7 @@ public class PointToPointBenchmark {
             }
 
             case "alt" -> {
-                int[] landmarks = new RandomLandmarkSelector().select(graph, 4, 42L);
+                int[] landmarks = new RandomLandmarkSelector().select(graph, BenchmarkConfig.LANDMARK_COUNT, BenchmarkConfig.LANDMARK_SEED);
 
                 LandmarkPreprocessingResult preprocessing = new LandmarkPreprocessor(network).preprocess(landmarks);
 
@@ -88,7 +88,7 @@ public class PointToPointBenchmark {
 
 
     @Benchmark
-    @OperationsPerInvocation(100)
+    @OperationsPerInvocation(BenchmarkConfig.PAIR_COUNT)
     public void search(Blackhole blackhole) {
 
         for (int[] query : queries) {

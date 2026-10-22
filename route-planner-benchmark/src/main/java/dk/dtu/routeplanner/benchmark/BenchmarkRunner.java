@@ -38,7 +38,7 @@ public class BenchmarkRunner {
         double c = straightLine.smallestLimit(graph);
 
         // save the selected landmarks
-        int[] landmarks = new RandomLandmarkSelector().select(graph, 4, 42L);
+        int[] landmarks = new RandomLandmarkSelector().select(graph, BenchmarkConfig.LANDMARK_COUNT, BenchmarkConfig.LANDMARK_SEED);
 
         LandmarkPreprocessingResult preprocessing = new LandmarkPreprocessor(network).preprocess(landmarks);
 
@@ -58,7 +58,7 @@ public class BenchmarkRunner {
         };
 
 
-        int[][] queries = Workloads.generateReachablePairs(graph, 100, 42L);
+        int[][] queries = Workloads.generateReachablePairs(graph, BenchmarkConfig.PAIR_COUNT, BenchmarkConfig.QUERY_SEED);
         List<String> csvLines = new ArrayList<>();
 
         csvLines.add("pair_id,algorithm,source,target,distance,settled,relaxed");
@@ -128,11 +128,10 @@ public class BenchmarkRunner {
         System.out.println("\nBenchmark workload completed");
         System.out.println("Validated reachable pairs: " + queries.length);
 
-        Path csvPath = Path.of(
-            "benchmark-data/results/NY-100pairs-seed42-counters.csv"
-        );
+        Workloads.savePairs(BenchmarkConfig.NY_WORKLOAD, queries);
+        System.out.println("Workload saved to: " + BenchmarkConfig.NY_WORKLOAD);
 
-        Files.createDirectories(csvPath.getParent());
+        Path csvPath = Path.of("benchmark-data/results/NY-100pairs-seed42-counters.csv");
 
         Files.write(csvPath, csvLines, StandardCharsets.UTF_8);
 
