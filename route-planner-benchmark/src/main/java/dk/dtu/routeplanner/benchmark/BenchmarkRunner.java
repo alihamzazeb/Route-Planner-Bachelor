@@ -2,7 +2,11 @@
 package dk.dtu.routeplanner.benchmark;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import dk.dtu.routeplanner.core.algorithms.AStar;
 import dk.dtu.routeplanner.core.algorithms.BidirectionalDijkstra;
@@ -55,11 +59,17 @@ public class BenchmarkRunner {
 
 
         int[][] queries = Workloads.generateReachablePairs(graph, 100, 42L);
+        List<String> csvLines = new ArrayList<>();
+
+        csvLines.add("pair_id,algorithm,source,target,distance,settled,relaxed");
+
+        int pairId = 0;
 
         System.out.println("New York road network");
         System.out.println("Nodes: " + graph.nodeCount());
 
         for (int[] query : queries) {
+            pairId++;
 
             int source = query[0];
             int target = query[1];
@@ -101,6 +111,15 @@ public class BenchmarkRunner {
                         result.relaxedCounter(),
                         elapsed / 1000000.0
                 );
+                csvLines.add(
+                    pairId + "," +
+                    names[i] + "," +
+                    source + "," +
+                    target + "," +
+                    result.distance() + "," +
+                    result.settledCounter() + "," +
+                    result.relaxedCounter()
+                );
             }
 
             System.out.println("All four algorithms agree.");
@@ -108,6 +127,17 @@ public class BenchmarkRunner {
 
         System.out.println("\nBenchmark workload completed");
         System.out.println("Validated reachable pairs: " + queries.length);
+
+        Path csvPath = Path.of(
+            "benchmark-data/results/NY-100pairs-seed42-counters.csv"
+        );
+
+        Files.createDirectories(csvPath.getParent());
+
+        Files.write(csvPath, csvLines, StandardCharsets.UTF_8);
+
+        System.out.println("Counter results saved to: " + csvPath);
+        System.out.println("Rows saved: " + (csvLines.size() - 1));
 
     }
 
