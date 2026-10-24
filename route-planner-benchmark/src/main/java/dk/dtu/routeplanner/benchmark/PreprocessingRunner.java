@@ -62,6 +62,32 @@ public class PreprocessingRunner {
         AStar alt = new AStar(new LandmarkHeuristic(preprocessing));
         double altMs = ms(start);
 
+
+        // memory stuff
+        int nodes = network.forward().nodeCount();
+        long edges = network.forward().edgeEnd(nodes - 1);
+
+        // Forward and reverse graph arrays bytes
+        long graphBytes = 2L * (
+            (nodes + 1L) * Integer.BYTES +
+            edges * (Integer.BYTES + Double.BYTES)
+        );
+
+        // bytes for the longitude and latitude arrays
+        long coordinateBytes = 2L * nodes * Integer.BYTES;
+
+        // Forward and reverse distance arrays for every landmark in ALT
+        long altBytes = 2L * landmarks.length * nodes * Double.BYTES;
+
+        System.out.printf(Locale.ROOT,
+                "Graph: %.2f MiB%nCoordinates: %.2f MiB%nALT tables: %.2f MiB%n",
+                // to get to MiB
+                graphBytes / 1048576.0,
+                coordinateBytes / 1048576.0,
+                altBytes / 1048576.0
+        );
+
+
         // the prepared data
         keepAlive = new PreparedData(network, coordinates, astar, alt);
 
