@@ -12,7 +12,7 @@ public final class RandomLandmarkSelector {
 
     public int[] select(Graph graph, int count, long seed) {
 
-        Objects.requireNonNull(graph, "graph");
+        Objects.requireNonNull(graph, "graph"); // just a check to see if we have a graph
 
         int nodeCount = graph.nodeCount();
 

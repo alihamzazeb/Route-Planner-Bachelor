@@ -14,6 +14,7 @@ public class LandmarkPreprocessor {
     }
 
     public LandmarkPreprocessingResult preprocess(int[] landmarks) {
+        // run dijkstra on all landmarks and then store the result
 
         Dijkstra dijkstra = new Dijkstra();
 

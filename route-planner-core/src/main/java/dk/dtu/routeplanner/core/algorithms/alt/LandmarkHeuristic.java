@@ -29,6 +29,7 @@ public class LandmarkHeuristic implements Heuristic {
                 best = Math.max(best, lowerBound);
             }
 
+            // reverse graph stuff
             if (Double.isFinite(nodeToLandmark) && Double.isFinite(targetToLandmark)) {
                 double lowerBound = nodeToLandmark - targetToLandmark;
                 best = Math.max(best, lowerBound);
