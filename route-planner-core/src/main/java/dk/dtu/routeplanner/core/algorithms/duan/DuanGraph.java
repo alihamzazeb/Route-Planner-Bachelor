@@ -5,6 +5,11 @@ import java.util.Arrays;
 import dk.dtu.routeplanner.core.graph.Graph;
 
 final class DuanGraph implements Graph {
+    static final int DIRECT_DEGREE_LIMIT = 8;
+    private final int[] compactOffsets;
+    private final int[] compactTargets;
+    final int maxDegree;
+    final boolean transformed;
     private final int[] offsets;
     private final int[] targets;
     private final double[] weights;
@@ -14,7 +19,8 @@ final class DuanGraph implements Graph {
     final int reachableCount;
 
     private DuanGraph(int[] offsets, int[] targets, double[] weights,
-            int[] originalToInternal, int[] internalToOriginal, int source, int reachableCount) {
+            int[] originalToInternal, int[] internalToOriginal, int source, int reachableCount,
+            int[] compactOffsets, int[] compactTargets, int maxDegree, boolean transformed) {
         this.offsets = offsets;
         this.targets = targets;
         this.weights = weights;
@@ -22,9 +28,17 @@ final class DuanGraph implements Graph {
         this.internalToOriginal = internalToOriginal;
         this.source = source;
         this.reachableCount = reachableCount;
+        this.compactOffsets = compactOffsets;
+        this.compactTargets = compactTargets;
+        this.maxDegree = maxDegree;
+        this.transformed = transformed;
     }
 
     static DuanGraph prepare(Graph graph, int source) {
+        return prepare(graph, source, Duan.DegreeMode.TRANSFORM);
+    }
+
+    static DuanGraph prepare(Graph graph, int source, Duan.DegreeMode mode) {
         int n = graph.nodeCount();
         int[] mapping = new int[n];
         Arrays.fill(mapping, -1);
@@ -48,6 +62,29 @@ final class DuanGraph implements Graph {
             }
         }
 
+        return build(graph, mapping, originals, reachable, source, mode);
+    }
+
+    static DuanGraph prepareAll(Graph graph, Duan.DegreeMode mode) {
+        int n = graph.nodeCount();
+        int[] mapping = new int[n];
+        int[] originals = new int[n];
+        for (int node = 0; node < n; node++) {
+            mapping[node] = node;
+            originals[node] = node;
+            for (int edge = graph.edgeStart(node); edge < graph.edgeEnd(node); edge++) {
+                int target = graph.edgeTarget(edge);
+                double weight = graph.edgeWeight(edge);
+                if (target < 0 || target >= n || !Double.isFinite(weight) || weight < 0) {
+                    throw new IllegalArgumentException("Duan needs valid targets and finite, nonnegative weights");
+                }
+            }
+        }
+        return build(graph, mapping, originals, n, -1, mode);
+    }
+
+    private static DuanGraph build(Graph graph, int[] mapping, int[] originals,
+            int reachable, int source, Duan.DegreeMode mode) {
         int[] seen = new int[reachable];
         Arrays.fill(seen, -1);
         int[] compactOffsets = new int[reachable + 1];
@@ -89,6 +126,17 @@ final class DuanGraph implements Graph {
                     compactWeights[position[to]] = weight;
                 }
             }
+        }
+
+        int maxDegree = 0;
+        for (int node = 0; node < reachable; node++) {
+            int outgoing = compactOffsets[node + 1] - compactOffsets[node];
+            maxDegree = Math.max(maxDegree, Math.max(incoming[node], outgoing));
+        }
+        if (mode == Duan.DegreeMode.BOUNDED && maxDegree <= DIRECT_DEGREE_LIMIT) {
+            return new DuanGraph(compactOffsets, compactTargets, compactWeights, mapping,
+                    Arrays.copyOf(originals, reachable), source < 0 ? -1 : mapping[source], reachable,
+                    compactOffsets, compactTargets, maxDegree, false);
         }
 
         int[] firstCopy = new int[reachable + 1];
@@ -133,7 +181,39 @@ final class DuanGraph implements Graph {
             mapping[originals[node]] = firstCopy[node];
         }
         return new DuanGraph(offsets, targets, weights, mapping, internalToOriginal,
-                mapping[source], reachable);
+                source < 0 ? -1 : mapping[source], reachable,
+                compactOffsets, compactTargets, maxDegree, true);
+    }
+
+    record Reachability(int originalNodes, int internalNodes) {}
+
+    Reachability reachableFrom(int originalSource) {
+        if (source >= 0) {
+            throw new IllegalStateException("Reachability is only needed for a graph prepared for all sources");
+        }
+        boolean[] seen = new boolean[originalToInternal.length];
+        int[] queue = new int[seen.length];
+        seen[originalSource] = true;
+        queue[0] = originalSource;
+        int count = 1;
+        int internalCount = 0;
+        for (int head = 0; head < count; head++) {
+            int node = queue[head];
+            int end = node + 1 < seen.length ? originalToInternal[node + 1] : nodeCount();
+            internalCount += end - originalToInternal[node];
+            for (int edge = compactOffsets[node]; edge < compactOffsets[node + 1]; edge++) {
+                int target = compactTargets[edge];
+                if (!seen[target]) {
+                    seen[target] = true;
+                    queue[count++] = target;
+                }
+            }
+        }
+        return new Reachability(count, internalCount);
+    }
+
+    int compactEdgeCount() {
+        return compactTargets.length;
     }
 
     @Override

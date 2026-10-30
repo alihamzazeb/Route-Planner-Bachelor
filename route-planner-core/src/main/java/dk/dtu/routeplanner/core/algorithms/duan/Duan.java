@@ -15,6 +15,44 @@ import dk.dtu.routeplanner.core.model.SingleSourceResult;
 
 public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
 
+    public enum DegreeMode {
+        TRANSFORM,
+        BOUNDED
+    }
+
+    private final DegreeMode degreeMode;
+    private final Graph preparedFor;
+    private final DuanGraph preparedGraph;
+
+    public Duan() {
+        this(DegreeMode.TRANSFORM);
+    }
+
+    public Duan(DegreeMode degreeMode) {
+        this.degreeMode = Objects.requireNonNull(degreeMode, "degreeMode");
+        this.preparedFor = null;
+        this.preparedGraph = null;
+    }
+
+    public Duan(Graph graph, DegreeMode degreeMode) {
+        this.degreeMode = Objects.requireNonNull(degreeMode, "degreeMode");
+        this.preparedFor = Objects.requireNonNull(graph, "graph");
+        this.preparedGraph = DuanGraph.prepareAll(graph, degreeMode);
+    }
+
+    public record GraphInfo(int originalNodes, int compactEdges, int internalNodes,
+                            int internalEdges, int maxDegree, boolean transformed) {}
+
+    public GraphInfo graphInfo() {
+        if (preparedGraph == null) {
+            throw new IllegalStateException("Construct Duan with a graph to inspect its preparation");
+        }
+        int nodes = preparedGraph.nodeCount();
+        int edges = nodes == 0 ? 0 : preparedGraph.edgeEnd(nodes - 1);
+        return new GraphInfo(preparedGraph.originalToInternal.length, preparedGraph.compactEdgeCount(),
+                nodes, edges, preparedGraph.maxDegree, preparedGraph.transformed);
+    }
+
     @Override
     public SingleSourceResult computeShortestPaths(Graph graph, int source) {
         return createSearch(graph, source).run();
@@ -32,17 +70,30 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
                 result.settledCounter(), result.relaxedCounter());
     }
 
-    private static Search createSearch(Graph graph, int source) {
+    private Search createSearch(Graph graph, int source) {
         Objects.requireNonNull(graph, "graph");
         if (source < 0 || source >= graph.nodeCount()) {
             throw new IllegalArgumentException("Invalid source node: " + source);
         }
-        return new Search(DuanGraph.prepare(graph, source));
+        if (preparedGraph != null) {
+            if (graph != preparedFor) {
+                throw new IllegalArgumentException("Duan was prepared for a different graph instance");
+            }
+            DuanGraph.Reachability reachable = preparedGraph.reachableFrom(source);
+            return new Search(preparedGraph, preparedGraph.originalToInternal[source],
+                    reachable.originalNodes(), reachable.internalNodes());
+        }
+        DuanGraph prepared = DuanGraph.prepare(graph, source, degreeMode);
+        return new Search(prepared, prepared.source, prepared.reachableCount, prepared.nodeCount());
     }
 
     record Entry(int node, double dist, int hops) implements Comparable<Entry> {
         @Override
         public int compareTo(Entry other) {
+            return compare(dist, hops, node, other);
+        }
+
+        static int compare(double dist, int hops, int node, Entry other) {
             int comparison = Double.compare(dist, other.dist);
             if (comparison == 0) {
                 comparison = Integer.compare(hops, other.hops);
@@ -62,6 +113,9 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
 
     private static class Search {
         private final DuanGraph graph;
+        private final int source;
+        private final int reachableOriginalNodes;
+        private final int reachableInternalNodes;
         private final double[] dist;
         private final int[] hops;
         private final int[] prev;
@@ -74,8 +128,11 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
         private final Workspace[] workspaces;
         private long relaxedCounter;
 
-        Search(DuanGraph graph) {
+        Search(DuanGraph graph, int source, int reachableOriginalNodes, int reachableInternalNodes) {
             this.graph = graph;
+            this.source = source;
+            this.reachableOriginalNodes = reachableOriginalNodes;
+            this.reachableInternalNodes = reachableInternalNodes;
             int n = graph.nodeCount();
             dist = new double[n];
             hops = new int[n];
@@ -87,8 +144,8 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             Arrays.fill(hops, Integer.MAX_VALUE);
             Arrays.fill(prev, -1);
             Arrays.fill(prevEdge, -1);
-            dist[graph.source] = 0;
-            hops[graph.source] = 0;
+            dist[source] = 0;
+            hops[source] = 0;
 
             double log = Math.log(Math.max(2, n)) / Math.log(2);
             k = Math.max(1, (int) Math.cbrt(log));
@@ -98,8 +155,8 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
         }
 
         SingleSourceResult run() {
-            BoundedResult result = bmssp(levels, INFINITY, List.of(graph.source));
-            if (result.bound().compareTo(INFINITY) != 0 || result.completed().size() != graph.nodeCount()) {
+            BoundedResult result = bmssp(levels, INFINITY, List.of(source));
+            if (result.bound().compareTo(INFINITY) != 0 || result.completed().size() != reachableInternalNodes) {
                 throw new IllegalStateException("Top-level BMSSP did not finish");
             }
             double[] originalDistances = new double[graph.originalToInternal.length];
@@ -110,13 +167,13 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
                     originalDistances[node] = dist[internal];
                 }
             }
-            return new SingleSourceResult(graph.reachableCount,
+            return new SingleSourceResult(reachableOriginalNodes,
                     Math.toIntExact(relaxedCounter), originalDistances);
         }
 
         private int[] pathTo(int target) {
             int internal = graph.originalToInternal[target];
-            if (internal < 0) {
+            if (internal < 0 || !Double.isFinite(dist[internal])) {
                 return new int[0];
             }
             ArrayDeque<Integer> path = new ArrayDeque<>();
@@ -125,7 +182,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
                 if (path.isEmpty() || path.getFirst() != original) {
                     path.addFirst(original);
                 }
-                if (internal == graph.source) {
+                if (internal == source) {
                     return path.stream().mapToInt(Integer::intValue).toArray();
                 }
                 internal = prev[internal];
@@ -328,16 +385,19 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             if (!Double.isFinite(newDist)) {
                 throw new ArithmeticException("Path distance exceeds the finite double range");
             }
-            Entry candidate = new Entry(neighbour, newDist, hops[node] + 1);
-            if (candidate.compareTo(bound) >= 0) {
+            int newHops = hops[node] + 1;
+            if (Entry.compare(newDist, newHops, neighbour, bound) >= 0) {
                 return false;
             }
-            int comparison = candidate.compareTo(entry(neighbour));
+            int comparison = Double.compare(newDist, dist[neighbour]);
+            if (comparison == 0) {
+                comparison = Integer.compare(newHops, hops[neighbour]);
+            }
             if (comparison > 0 || (comparison == 0 && node > prev[neighbour])) {
                 return false;
             }
             dist[neighbour] = newDist;
-            hops[neighbour] = candidate.hops();
+            hops[neighbour] = newHops;
             prev[neighbour] = node;
             prevEdge[neighbour] = edge;
             return true;
