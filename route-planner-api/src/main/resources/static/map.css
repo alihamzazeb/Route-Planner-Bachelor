@@ -167,8 +167,6 @@ html, body {
 .map-container {
     position: relative;
     height: 100%;
-    min-width: 0;
-    min-height: 0;
 }
 
 #map {
@@ -345,6 +343,15 @@ html, body {
     width: 29%;
 }
 
+.single-source-table {
+    min-width: 560px;
+}
+
+.single-source-table th:nth-child(2),
+.single-source-table td:nth-child(2) {
+    width: auto;
+}
+
 .comparison-table tbody tr:last-child td {
     border-bottom: none;
 }
@@ -383,6 +390,9 @@ html, body {
     color: #fca5a5;
 }
 
+#comparison-message:empty {
+    display: none;
+}
 
 .find-button:focus-visible,
 .compare-button:focus-visible,
@@ -393,7 +403,6 @@ html, body {
     outline: 2px solid #93c5fd;
     outline-offset: 2px;
 }
-
 
 @media (max-width: 700px) {
     .app {
@@ -423,13 +432,4 @@ html, body {
     .comparison-header h2 {
         font-size: 20px;
     }
-}
-
-.single-source-table {
-    min-width: 560px;
-}
-
-.single-source-table th:nth-child(2),
-.single-source-table td:nth-child(2) {
-    width: auto;
 }

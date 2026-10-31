@@ -18,126 +18,46 @@ map.addControl(new maplibregl.NavigationControl(), "top-right");
 const routeForm = document.getElementById("route-form");
 const searchType = document.getElementById("search-type");
 const sourceInput = document.getElementById("source");
-const targetGroup = document.getElementById("target-group");
 const targetInput = document.getElementById("target");
-const algorithmInput = document.getElementById("algorithm");
 const findButton = document.getElementById("find-route");
-const clearButton = document.getElementById("clear-route");
+const compareButton = document.getElementById("compare-all");
 const routeMessage = document.getElementById("route-message");
 const routeResults = document.getElementById("route-results");
 const routePlaceholder = document.getElementById("route-placeholder");
-const compareButton = document.getElementById("compare-all");
 const comparisonSection = document.getElementById("comparison-section");
-const comparisonRoute = document.getElementById("comparison-route");
 const comparisonMessage = document.getElementById("comparison-message");
-const pointToPointTable = document.getElementById("point-to-point-table");
-const singleSourceTable = document.getElementById("single-source-table");
-const hideComparison = document.getElementById("hide-comparison");
 const workspace = document.querySelector(".workspace");
 
-// For each search type: the endpoint, its algorithms, and the text to show in each element (by id)
-const searchTypes = {
-    "point-to-point": {
-        endpoint: "/api/routes",
-        algorithms: {
-            dijkstra: "Dijkstra",
-            bidirectional: "Bidirectional Dijkstra",
-            astar: "A*",
-            alt: "ALT"
-        },
-        text: {
-            "query-title": "Plan a Route",
-            "query-description": "Choose a starting node, destination, and routing algorithm.",
-            "find-route": "Find Route",
-            "compare-all": "Compare All Algorithms",
-            "result-title": "Route Details",
-            "route-placeholder": "Calculate a route to see the results.",
-            "result-distance-label": "Shortest-path distance",
-            "result-distance-unit": "Road distance",
-            "result-count-label": "Path nodes",
-            "result-settled-label": "Settled nodes",
-            "comparison-label": "Same source and destination",
-            "comparison-title": "Algorithm Comparison",
-            "comparison-description": "Search work and query time for all four algorithms on the same route."
-        }
-    },
-    "single-source": {
-        endpoint: "/api/single-source",
-        algorithms: {
-            duan: "Duan (single-source)",
-            dijkstra: "Dijkstra (single-source)"
-        },
-        text: {
-            "query-title": "Single-Source Search",
-            "query-description": "Compute shortest-path distances from one source to every reachable node. There is no destination.",
-            "find-route": "Compute All Distances",
-            "compare-all": "Compare Dijkstra and Duan",
-            "result-title": "Single-Source Results",
-            "route-placeholder": "Run a single-source search to see the results.",
-            "result-distance-label": "Reachable nodes (including source)",
-            "result-distance-unit": "",
-            "result-count-label": "Unreachable nodes",
-            "result-settled-label": "Settled / completed nodes",
-            "comparison-label": "Same source, all reachable nodes",
-            "comparison-title": "Single-Source Comparison",
-            "comparison-description": "Both algorithms compute all distances. Duan's graph preparation runs once at startup and is not included in the time. Duan's edge count refers to its internal graph. These are individual runs, not benchmark averages."
-        }
-    }
-};
+const emptyRoute = { type: "FeatureCollection", features: [] };
 
-let startMarker = null;
-let endMarker = null;
+let markers = [];
 let requestId = 0;
-
-const emptyRoute = {
-    type: "FeatureCollection",
-    features: []
-};
 
 const mapReady = new Promise((resolve) => {
     map.once("load", () => {
-        map.addSource("route", {
-            type: "geojson",
-            data: emptyRoute
-        });
-
+        map.addSource("route", { type: "geojson", data: emptyRoute });
         map.addLayer({
             id: "route-line",
             type: "line",
             source: "route",
-            layout: {
-                "line-join": "round",
-                "line-cap": "round"
-            },
-            paint: {
-                "line-color": "#2563eb",
-                "line-width": 5,
-                "line-opacity": 0.9
-            }
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-color": "#2563eb", "line-width": 5, "line-opacity": 0.9 }
         });
-
         resolve();
     });
 });
 
 function clearRoute() {
-    const routeSource = map.getSource("route");
-
-    if (routeSource) {
-        routeSource.setData(emptyRoute);
-    }
-
-    if (startMarker) {
-        startMarker.remove();
-        startMarker = null;
-    }
-
-    if (endMarker) {
-        endMarker.remove();
-        endMarker = null;
-    }
+    map.getSource("route")?.setData(emptyRoute);
+    markers.forEach(marker => marker.remove());
+    markers = [];
 }
 
+function addMarker(coordinate, color) {
+    markers.push(new maplibregl.Marker({ color }).setLngLat(coordinate).addTo(map));
+}
+
+// Green marker at the start, red marker at the end. A single coordinate (single-source search) only gets the start marker
 function drawRoute(coordinates) {
     clearRoute();
 
@@ -145,31 +65,15 @@ function drawRoute(coordinates) {
         return;
     }
 
-    if (coordinates.length > 1) {
-        const geojson = {
-            type: "Feature",
-            properties: {},
-            geometry: {
-                type: "LineString",
-                coordinates: coordinates
-            }
-        };
-
-        map.getSource("route").setData(geojson);
-    }
-
-    startMarker = new maplibregl.Marker({ color: "#16a34a" })
-        .setLngLat(coordinates[0])
-        .addTo(map);
+    addMarker(coordinates[0], "#16a34a");
 
     if (coordinates.length === 1) {
         map.flyTo({ center: coordinates[0], zoom: 15 });
         return;
     }
 
-    endMarker = new maplibregl.Marker({ color: "#dc2626" })
-        .setLngLat(coordinates[coordinates.length - 1])
-        .addTo(map);
+    addMarker(coordinates.at(-1), "#dc2626");
+    map.getSource("route").setData({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } });
 
     const bounds = new maplibregl.LngLatBounds();
 
@@ -196,57 +100,54 @@ function setText(id, text) {
     document.getElementById(id).textContent = text;
 }
 
+function setMessage(element, message, isError = false) {
+    element.textContent = message;
+    element.classList.toggle("error", isError);
+}
+
+function setButtonsDisabled(disabled) {
+    findButton.disabled = disabled;
+    compareButton.disabled = disabled;
+}
+
 function isSingleSource() {
     return searchType.value === "single-source";
 }
 
-function setComparisonMessage(message, isError = false) {
-    comparisonMessage.textContent = message;
-    comparisonMessage.hidden = !message;
-    comparisonMessage.classList.toggle("error", isError);
+// The algorithm dropdown of the selected search type
+function algorithmInput() {
+    return document.getElementById(`${searchType.value}-algorithm`);
 }
 
-// Responses that arrive after this are ignored, because their request id is out of date
+// A response that is still on its way is ignored, because its request id is now out of date
 function cancelRequest() {
     requestId++;
-    findButton.disabled = false;
-    compareButton.disabled = false;
+    setButtonsDisabled(false);
 }
 
 function resetResults() {
     cancelRequest();
-    routeMessage.textContent = "";
-    routeMessage.classList.remove("error");
+    clearRoute();
+    setMessage(routeMessage, "");
+    setMessage(comparisonMessage, "");
     routeResults.hidden = true;
     routePlaceholder.hidden = false;
     comparisonSection.hidden = true;
-    setComparisonMessage("");
-    clearRoute();
 }
 
 function configureSearchType() {
-    const singleSource = isSingleSource();
-    const { algorithms, text } = searchTypes[searchType.value];
-
     resetResults();
 
-    // a hidden input that is required would still block the form, so it is disabled as well
-    targetGroup.hidden = singleSource;
-    targetInput.disabled = singleSource;
-    algorithmInput.replaceChildren(...Object.entries(algorithms).map(([value, label]) => new Option(label, value)));
-
-    for (const [id, value] of Object.entries(text)) {
-        setText(id, value);
+    for (const element of document.querySelectorAll("[data-search-type]")) {
+        element.hidden = element.dataset.searchType !== searchType.value;
     }
 
-    document.getElementById("result-time-item").hidden = !singleSource;
-    document.getElementById("single-source-note").hidden = !singleSource;
-    pointToPointTable.hidden = singleSource;
-    singleSourceTable.hidden = !singleSource;
+    // a hidden input that is required would still block the form, so it is disabled as well
+    targetInput.disabled = isSingleSource();
 }
 
 function showResult(data) {
-    setText("result-algorithm", searchTypes[searchType.value].algorithms[data.algorithm]);
+    setText("result-algorithm", algorithmInput().selectedOptions[0].text);
     setText("result-settled", formatCount(data.settledNodes));
     setText("result-relaxed", formatCount(data.relaxedEdges));
 
@@ -255,15 +156,16 @@ function showResult(data) {
         setText("result-status", "Completed");
         setText("result-distance", formatCount(data.reachableNodes));
         setText("result-distance-unit", `of ${formatCount(data.nodeCount)} nodes`);
-        setText("result-path-nodes", formatCount(data.unreachableNodes));
+        setText("result-count", formatCount(data.unreachableNodes));
         setText("result-time", formatTime(data.timeMs));
-        routeMessage.textContent = `All shortest-path distances from node ${data.source} computed. The map marks the source only.`;
+        setMessage(routeMessage, `All shortest-path distances from node ${data.source} computed. The map marks the source only.`);
     } else {
         drawRoute(data.coordinates);
         setText("result-status", data.reachable ? "Reachable" : "Unreachable");
         setText("result-distance", data.reachable ? formatDistance(data.distance) : "-");
-        setText("result-path-nodes", formatCount(data.path.length));
-        routeMessage.textContent = data.reachable ? "Route calculated successfully." : "No route exists between these nodes.";
+        setText("result-distance-unit", "Road distance");
+        setText("result-count", formatCount(data.path.length));
+        setMessage(routeMessage, data.reachable ? "Route calculated successfully." : "No route exists between these nodes.");
     }
 
     routePlaceholder.hidden = true;
@@ -271,24 +173,13 @@ function showResult(data) {
 }
 
 function resetComparison() {
-    for (const row of document.querySelectorAll(".comparison-table tbody tr")) {
-        row.classList.remove("comparison-best");
-
-        const fill = row.querySelector(".comparison-fill");
-
-        if (fill) {
-            fill.style.width = "0%";
-        }
-
-        for (const cell of row.querySelectorAll("[data-field]")) {
-            cell.textContent = "-";
-        }
-    }
+    comparisonSection.querySelectorAll(".comparison-best").forEach(row => row.classList.remove("comparison-best"));
+    comparisonSection.querySelectorAll(".comparison-fill").forEach(fill => fill.style.width = "0%");
+    comparisonSection.querySelectorAll("[data-field]").forEach(cell => cell.textContent = "-");
 }
 
 function showComparison(data) {
-    const singleSource = isSingleSource();
-    const table = singleSource ? singleSourceTable : pointToPointTable;
+    const table = comparisonSection.querySelector(`table[data-search-type="${searchType.value}"]`);
 
     for (const result of data.results) {
         const row = table.querySelector(`tr[data-algorithm="${result.algorithm}"]`);
@@ -298,25 +189,25 @@ function showComparison(data) {
         row.querySelector('[data-field="time"]').textContent = formatTime(result.timeMs);
     }
 
-    if (singleSource) {
+    if (isSingleSource()) {
         const agree = data.distanceMismatches === 0;
 
-        setComparisonMessage(agree
+        setMessage(comparisonMessage, agree
             ? `All ${formatCount(data.comparedNodes)} distances agree, including unreachable nodes.`
             : `${formatCount(data.distanceMismatches)} distances differ. Check the implementations.`, !agree);
     } else {
-        showRouteComparison(data.results);
+        showRouteComparison(table, data.results);
     }
 }
 
 // The point-to-point table also has the settled-nodes bar and the distance of each algorithm
-function showRouteComparison(results) {
+function showRouteComparison(table, results) {
     const maxSettled = Math.max(1, ...results.map(result => result.settledNodes));
     const reachable = results.filter(result => result.reachable);
     const leastSettled = Math.min(...reachable.map(result => result.settledNodes));
 
     for (const result of results) {
-        const row = pointToPointTable.querySelector(`tr[data-algorithm="${result.algorithm}"]`);
+        const row = table.querySelector(`tr[data-algorithm="${result.algorithm}"]`);
 
         row.querySelector(".comparison-fill").style.width = `${result.settledNodes / maxSettled * 100}%`;
         row.querySelector('[data-field="distance"]').textContent = result.reachable ? formatDistance(result.distance) : "No path";
@@ -324,12 +215,12 @@ function showRouteComparison(results) {
     }
 
     if (reachable.length === 0) {
-        setComparisonMessage("No route exists between these nodes.");
+        setMessage(comparisonMessage, "No route exists between these nodes.");
     } else if (reachable.length !== results.length ||
             results.some(result => Math.abs(result.distance - reachable[0].distance) > 1e-6)) {
-        setComparisonMessage("The algorithms did not return the same distance. Check the results.", true);
+        setMessage(comparisonMessage, "The algorithms did not return the same distance. Check the results.", true);
     } else {
-        setComparisonMessage("");
+        setMessage(comparisonMessage, "");
     }
 }
 
@@ -339,34 +230,33 @@ async function runSearch(compare) {
     }
 
     resetResults();
+    setButtonsDisabled(true);
 
     const id = requestId;
     const singleSource = isSingleSource();
-    const { endpoint, algorithms } = searchTypes[searchType.value];
-    const params = new URLSearchParams({ source: sourceInput.value, algorithm: algorithmInput.value });
+    const source = sourceInput.value;
+    const target = targetInput.value;
+    const endpoint = (singleSource ? "/api/single-source" : "/api/routes") + (compare ? "/compare" : "");
+    const params = new URLSearchParams({ source, algorithm: algorithmInput().value });
 
     if (!singleSource) {
-        params.set("target", targetInput.value);
+        params.set("target", target);
     }
-
-    findButton.disabled = true;
-    compareButton.disabled = true;
 
     if (compare) {
         resetComparison();
-        comparisonRoute.textContent = singleSource
-            ? `Source node ${sourceInput.value} to all reachable nodes`
-            : `Node ${sourceInput.value} → Node ${targetInput.value}`;
-        setComparisonMessage("Calculating comparison...");
+        setText("comparison-route", singleSource ? `Source node ${source} to all reachable nodes` : `Node ${source} → Node ${target}`);
+        setMessage(comparisonMessage, "Calculating comparison...");
         comparisonSection.hidden = false;
         comparisonSection.scrollIntoView({ behavior: "smooth", block: "start" });
     } else {
-        routeMessage.textContent = singleSource ? "Computing all distances..." : "Calculating route...";
+        setMessage(routeMessage, singleSource ? "Computing all distances..." : "Calculating route...");
         workspace.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     try {
-        const response = await fetch(`${endpoint}${compare ? "/compare" : ""}?${params}`);
+        // the result can only be drawn once the map has loaded
+        const [response] = await Promise.all([fetch(`${endpoint}?${params}`), mapReady]);
         const data = await response.json();
 
         if (id !== requestId) {
@@ -377,16 +267,6 @@ async function runSearch(compare) {
             throw new Error(data.message || "Search request failed");
         }
 
-        if (compare && data.results?.length !== Object.keys(algorithms).length) {
-            throw new Error("Incomplete comparison results");
-        }
-
-        await mapReady;
-
-        if (id !== requestId) {
-            return;
-        }
-
         if (compare) {
             showResult(singleSource ? data.result : data.route);
             showComparison(data);
@@ -395,49 +275,36 @@ async function runSearch(compare) {
         }
 
     } catch (error) {
-        if (id !== requestId) {
-            return;
-        }
-
-        clearRoute();
-        routeResults.hidden = true;
-        routePlaceholder.hidden = false;
-
-        if (compare) {
-            setComparisonMessage(`Error: ${error.message}`, true);
-        } else {
-            routeMessage.textContent = `Error: ${error.message}`;
-            routeMessage.classList.add("error");
+        if (id === requestId) {
+            setMessage(compare ? comparisonMessage : routeMessage, `Error: ${error.message}`, true);
         }
 
     } finally {
         if (id === requestId) {
-            findButton.disabled = false;
-            compareButton.disabled = false;
+            setButtonsDisabled(false);
         }
     }
 }
 
 searchType.addEventListener("change", configureSearchType);
-
 routeForm.addEventListener("input", resetResults);
+compareButton.addEventListener("click", () => runSearch(true));
 
 routeForm.addEventListener("submit", (event) => {
     event.preventDefault();
     runSearch(false);
 });
 
-compareButton.addEventListener("click", () => runSearch(true));
-
-hideComparison.addEventListener("click", () => {
+document.getElementById("hide-comparison").addEventListener("click", () => {
     cancelRequest();
     comparisonSection.hidden = true;
 });
 
-clearButton.addEventListener("click", () => {
+document.getElementById("clear-route").addEventListener("click", () => {
     routeForm.reset();
     configureSearchType();
     workspace.scrollTo({ top: 0, behavior: "smooth" });
 });
 
+// the browser can restore the selected search type on reload, so the page is set up from the dropdown
 configureSearchType();

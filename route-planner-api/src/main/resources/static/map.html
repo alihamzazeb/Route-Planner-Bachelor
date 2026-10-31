@@ -10,6 +10,7 @@
 </head>
 
 <body>
+    <!-- Elements with data-search-type are only shown when that search type is selected (see map.js) -->
     <div class="app">
         <aside class="sidebar">
             <div class="brand">
@@ -18,8 +19,10 @@
             </div>
 
             <section class="panel">
-                <h2 id="query-title">Plan a Route</h2>
-                <p id="query-description">Choose a starting node, destination, and routing algorithm.</p>
+                <h2 data-search-type="point-to-point">Plan a Route</h2>
+                <h2 data-search-type="single-source" hidden>Single-Source Search</h2>
+                <p data-search-type="point-to-point">Choose a starting node, destination, and routing algorithm.</p>
+                <p data-search-type="single-source" hidden>Compute shortest-path distances from one source to every reachable node. There is no destination.</p>
 
                 <form id="route-form">
                     <div class="form-group">
@@ -35,14 +38,14 @@
                         <input type="number" id="source" placeholder="e.g. 10" min="0" step="1" required>
                     </div>
 
-                    <div class="form-group" id="target-group">
+                    <div class="form-group" data-search-type="point-to-point">
                         <label for="target">Destination node</label>
                         <input type="number" id="target" placeholder="e.g. 500" min="0" step="1" required>
                     </div>
 
-                    <div class="form-group">
-                        <label for="algorithm">Algorithm</label>
-                        <select id="algorithm">
+                    <div class="form-group" data-search-type="point-to-point">
+                        <label for="point-to-point-algorithm">Algorithm</label>
+                        <select id="point-to-point-algorithm">
                             <option value="dijkstra">Dijkstra</option>
                             <option value="bidirectional">Bidirectional Dijkstra</option>
                             <option value="astar">A*</option>
@@ -50,22 +53,41 @@
                         </select>
                     </div>
 
-                    <button type="submit" id="find-route" class="find-button">Find Route</button>
-                    <button type="button" id="compare-all" class="compare-button">Compare All Algorithms</button>
+                    <div class="form-group" data-search-type="single-source" hidden>
+                        <label for="single-source-algorithm">Algorithm</label>
+                        <select id="single-source-algorithm">
+                            <option value="duan">Duan (single-source)</option>
+                            <option value="dijkstra">Dijkstra (single-source)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" id="find-route" class="find-button">
+                        <span data-search-type="point-to-point">Find Route</span>
+                        <span data-search-type="single-source" hidden>Compute All Distances</span>
+                    </button>
+                    <button type="button" id="compare-all" class="compare-button">
+                        <span data-search-type="point-to-point">Compare All Algorithms</span>
+                        <span data-search-type="single-source" hidden>Compare Dijkstra and Duan</span>
+                    </button>
                     <button type="button" id="clear-route" class="clear-button">Clear</button>
                     <p id="route-message" role="status" aria-live="polite"></p>
                 </form>
             </section>
 
             <section class="panel">
-                <h2 id="result-title">Route Details</h2>
-                <p id="route-placeholder">Calculate a route to see the results.</p>
+                <h2 data-search-type="point-to-point">Route Details</h2>
+                <h2 data-search-type="single-source" hidden>Single-Source Results</h2>
+                <p id="route-placeholder">
+                    <span data-search-type="point-to-point">Calculate a route to see the results.</span>
+                    <span data-search-type="single-source" hidden>Run a single-source search to see the results.</span>
+                </p>
 
                 <div id="route-results" class="route-results" hidden>
                     <div class="result-distance">
-                        <span id="result-distance-label">Shortest-path distance</span>
+                        <span data-search-type="point-to-point">Shortest-path distance</span>
+                        <span data-search-type="single-source" hidden>Reachable nodes (including source)</span>
                         <strong id="result-distance">-</strong>
-                        <small id="result-distance-unit">Road distance</small>
+                        <small id="result-distance-unit"></small>
                     </div>
 
                     <div class="result-grid">
@@ -78,23 +100,25 @@
                             <strong id="result-algorithm">-</strong>
                         </div>
                         <div class="result-item">
-                            <span id="result-count-label">Path nodes</span>
-                            <strong id="result-path-nodes">-</strong>
+                            <span data-search-type="point-to-point">Path nodes</span>
+                            <span data-search-type="single-source" hidden>Unreachable nodes</span>
+                            <strong id="result-count">-</strong>
                         </div>
                         <div class="result-item">
-                            <span id="result-settled-label">Settled nodes</span>
+                            <span data-search-type="point-to-point">Settled nodes</span>
+                            <span data-search-type="single-source" hidden>Settled / completed nodes</span>
                             <strong id="result-settled">-</strong>
                         </div>
                         <div class="result-item">
                             <span>Relaxed edges</span>
                             <strong id="result-relaxed">-</strong>
                         </div>
-                        <div class="result-item" id="result-time-item" hidden>
+                        <div class="result-item" data-search-type="single-source" hidden>
                             <span>Computation time</span>
                             <strong id="result-time">-</strong>
                         </div>
                     </div>
-                    <p id="single-source-note" hidden>Duan's graph preparation runs once at startup and is not included in the time. Duan counts completed original nodes and scans of its internal edges.</p>
+                    <p data-search-type="single-source" hidden>Duan's graph preparation runs once at startup and is not included in the time. Duan counts completed original nodes and scans of its internal edges.</p>
                 </div>
             </section>
 
@@ -111,19 +135,22 @@
                 <div class="comparison-inner">
                     <div class="comparison-header">
                         <div>
-                            <p class="comparison-label" id="comparison-label">Same source and destination</p>
-                            <h2 id="comparison-title">Algorithm Comparison</h2>
+                            <p class="comparison-label" data-search-type="point-to-point">Same source and destination</p>
+                            <p class="comparison-label" data-search-type="single-source" hidden>Same source, all reachable nodes</p>
+                            <h2 id="comparison-title">
+                                <span data-search-type="point-to-point">Algorithm Comparison</span>
+                                <span data-search-type="single-source" hidden>Single-Source Comparison</span>
+                            </h2>
                             <p id="comparison-route"></p>
                         </div>
                         <button type="button" id="hide-comparison" class="comparison-close">Hide</button>
                     </div>
 
-                    <p class="comparison-description" id="comparison-description">
-                        Search work and query time for all four algorithms on the same route.
-                    </p>
+                    <p class="comparison-description" data-search-type="point-to-point">Search work and query time for all four algorithms on the same route.</p>
+                    <p class="comparison-description" data-search-type="single-source" hidden>Both algorithms compute all distances. Duan's graph preparation runs once at startup and is not included in the time. Duan's edge count refers to its internal graph. These are individual runs, not benchmark averages.</p>
 
                     <div class="comparison-table-container">
-                        <table class="comparison-table" id="point-to-point-table">
+                        <table class="comparison-table" data-search-type="point-to-point">
                             <thead>
                                 <tr>
                                     <th>Algorithm</th>
@@ -169,7 +196,7 @@
                                 </tr>
                             </tbody>
                         </table>
-                        <table class="comparison-table single-source-table" id="single-source-table" hidden>
+                        <table class="comparison-table single-source-table" data-search-type="single-source" hidden>
                             <thead>
                                 <tr>
                                     <th>Algorithm</th>
@@ -194,7 +221,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <p id="comparison-message" role="status" aria-live="polite" hidden></p>
+                    <p id="comparison-message" role="status" aria-live="polite"></p>
                 </div>
             </section>
         </main>
