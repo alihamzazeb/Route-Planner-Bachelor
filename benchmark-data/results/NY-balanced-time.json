@@ -1,0 +1,248 @@
+[
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dk.dtu.routeplanner.benchmark.PointToPointBenchmark.search",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 2,
+        "jvm" : "/Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21.0.5",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.5+11-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "algorithmName" : "dijkstra"
+        },
+        "primaryMetric" : {
+            "score" : 6.504180416333334,
+            "scoreError" : 0.3980354189433021,
+            "scoreConfidence" : [
+                6.1061449973900315,
+                6.902215835276636
+            ],
+            "scorePercentiles" : {
+                "0.0" : 6.189296875,
+                "50.0" : 6.4620421875,
+                "90.0" : 6.957882762666666,
+                "95.0" : 6.9716465266666665,
+                "99.0" : 6.9716465266666665,
+                "99.9" : 6.9716465266666665,
+                "99.99" : 6.9716465266666665,
+                "99.999" : 6.9716465266666665,
+                "99.9999" : 6.9716465266666665,
+                "100.0" : 6.9716465266666665
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    6.720515415,
+                    6.834008886666667,
+                    6.494248335,
+                    6.4349041675,
+                    6.425905625
+                ],
+                [
+                    6.9716465266666665,
+                    6.4891802075,
+                    6.2205871875,
+                    6.189296875,
+                    6.2615109375
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dk.dtu.routeplanner.benchmark.PointToPointBenchmark.search",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 2,
+        "jvm" : "/Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21.0.5",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.5+11-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "algorithmName" : "bidirectional"
+        },
+        "primaryMetric" : {
+            "score" : 4.444274042,
+            "scoreError" : 0.18136679759157615,
+            "scoreConfidence" : [
+                4.2629072444084235,
+                4.6256408395915765
+            ],
+            "scorePercentiles" : {
+                "0.0" : 4.337212168,
+                "50.0" : 4.393231667,
+                "90.0" : 4.651912401200001,
+                "95.0" : 4.657790418,
+                "99.0" : 4.657790418,
+                "99.9" : 4.657790418,
+                "99.99" : 4.657790418,
+                "99.999" : 4.657790418,
+                "99.9999" : 4.657790418,
+                "100.0" : 4.657790418
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    4.353838166,
+                    4.657790418,
+                    4.337212168,
+                    4.339457082,
+                    4.40353525
+                ],
+                [
+                    4.556739,
+                    4.59901025,
+                    4.470830918,
+                    4.341399084,
+                    4.382928084
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dk.dtu.routeplanner.benchmark.PointToPointBenchmark.search",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 2,
+        "jvm" : "/Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21.0.5",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.5+11-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "algorithmName" : "astar"
+        },
+        "primaryMetric" : {
+            "score" : 2.9927142084285716,
+            "scoreError" : 0.07742833923146737,
+            "scoreConfidence" : [
+                2.9152858691971044,
+                3.070142547660039
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2.9060532142857145,
+                "50.0" : 2.9941806542857146,
+                "90.0" : 3.0711727555714283,
+                "95.0" : 3.0750692257142855,
+                "99.0" : 3.0750692257142855,
+                "99.9" : 3.0750692257142855,
+                "99.99" : 3.0750692257142855,
+                "99.999" : 3.0750692257142855,
+                "99.9999" : 3.0750692257142855,
+                "100.0" : 3.0750692257142855
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    2.95372762,
+                    2.97124631,
+                    3.0337490485714285,
+                    3.0750692257142855,
+                    2.940647142857143
+                ],
+                [
+                    2.9060532142857145,
+                    3.02218369,
+                    2.984633332857143,
+                    3.003727975714286,
+                    3.0361045242857143
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "dk.dtu.routeplanner.benchmark.PointToPointBenchmark.search",
+        "mode" : "avgt",
+        "threads" : 1,
+        "forks" : 2,
+        "jvm" : "/Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home/bin/java",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "21.0.5",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "21.0.5+11-LTS",
+        "warmupIterations" : 3,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "2 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "algorithmName" : "alt"
+        },
+        "primaryMetric" : {
+            "score" : 1.8535153691287882,
+            "scoreError" : 0.0722660438778001,
+            "scoreConfidence" : [
+                1.7812493252509882,
+                1.9257814130065882
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1.8021652775,
+                "50.0" : 1.8327164963636364,
+                "90.0" : 1.947642667,
+                "95.0" : 1.9520800381818182,
+                "99.0" : 1.9520800381818182,
+                "99.9" : 1.9520800381818182,
+                "99.99" : 1.9520800381818182,
+                "99.999" : 1.9520800381818182,
+                "99.9999" : 1.9520800381818182,
+                "100.0" : 1.9520800381818182
+            },
+            "scoreUnit" : "ms/op",
+            "rawData" : [
+                [
+                    1.8309275,
+                    1.8313447345454545,
+                    1.8847205309090909,
+                    1.9520800381818182,
+                    1.9077063263636365
+                ],
+                [
+                    1.8072535066666666,
+                    1.8021652775,
+                    1.8260635416666666,
+                    1.8588039772727272,
+                    1.834088258181818
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    }
+]
+
+

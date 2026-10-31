@@ -1,0 +1,5 @@
+method,landmarks,queries,mean_settled,mean_relaxed
+random,4,100,10832.69,30914.35
+farthest,4,100,6056.21,17707.10
+random,8,100,5109.90,14760.12
+farthest,8,100,4157.59,12223.56
