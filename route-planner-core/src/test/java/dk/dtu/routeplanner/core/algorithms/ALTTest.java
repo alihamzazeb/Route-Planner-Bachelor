@@ -11,19 +11,20 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
+import dk.dtu.routeplanner.core.algorithms.alt.GeographicFarthestLandmarkSelector;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkHeuristic;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkPreprocessor;
 import dk.dtu.routeplanner.core.algorithms.alt.RandomLandmarkSelector;
+import dk.dtu.routeplanner.core.graph.Coordinates;
 import dk.dtu.routeplanner.core.graph.CsrGraph;
 import dk.dtu.routeplanner.core.graph.Graph;
 import dk.dtu.routeplanner.core.graph.RoadNetwork;
+import dk.dtu.routeplanner.core.graph.StraightLine;
 import dk.dtu.routeplanner.core.loader.DimacsLoader;
 import dk.dtu.routeplanner.core.model.LandmarkPreprocessingResult;
 import dk.dtu.routeplanner.core.model.SearchResult;
 
 class ALTTest {
-
-    // Node 5 is isolated. The other roads are directed.
     private RoadNetwork smallNetwork() {
         Graph forward = new CsrGraph(
                 new int[]{0, 2, 4, 5, 6, 7, 7},
@@ -38,6 +39,16 @@ class ALTTest {
         );
 
         return new RoadNetwork(forward, reverse);
+    }
+
+    private Graph fiveNodes() {
+        return new CsrGraph(new int[]{0, 0, 0, 0, 0, 0}, new int[]{}, new double[]{});
+    }
+
+    private StraightLine nodesOnALine() {
+        int[] longitudes = {-73990000, -73989000, -73988000, -73987000, -73980000};
+        int[] latitudes = {40750000, 40750000, 40750000, 40750000, 40750000};
+        return new StraightLine(new Coordinates(longitudes, latitudes));
     }
 
     @Test
@@ -71,6 +82,44 @@ class ALTTest {
     }
 
     @Test
+    void geographicSelectionPicksTheFarthestNodes() {
+        int[] landmarks = new GeographicFarthestLandmarkSelector()
+                .select(fiveNodes(), nodesOnALine(), 3, 42L);
+        assertArrayEquals(new int[]{0, 4, 3}, landmarks);
+    }
+
+    @Test
+    void geographicSelectionStartsLikeRandomSelection() {
+        GeographicFarthestLandmarkSelector geographic = new GeographicFarthestLandmarkSelector();
+        RandomLandmarkSelector random = new RandomLandmarkSelector();
+
+        for (long seed = 0; seed < 10; seed++) {
+            assertEquals(random.select(fiveNodes(), 1, seed)[0],
+                    geographic.select(fiveNodes(), nodesOnALine(), 1, seed)[0]);
+        }
+    }
+
+    @Test
+    void geographicSelectionUsesEveryNodeOnce() {
+        int[] landmarks = new GeographicFarthestLandmarkSelector()
+                .select(fiveNodes(), nodesOnALine(), 5, 42L);
+
+        Arrays.sort(landmarks);
+        assertArrayEquals(new int[]{0, 1, 2, 3, 4}, landmarks);
+    }
+
+    @Test
+    void geographicSelectionRejectsInvalidCounts() {
+        GeographicFarthestLandmarkSelector selector = new GeographicFarthestLandmarkSelector();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> selector.select(fiveNodes(), nodesOnALine(), 0, 42L));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> selector.select(fiveNodes(), nodesOnALine(), 6, 42L));
+    }
+
+    @Test
     void preprocessingStoresDistancesInBothDirections() {
         LandmarkPreprocessingResult data =
                 new LandmarkPreprocessor(smallNetwork())
@@ -79,18 +128,14 @@ class ALTTest {
         assertEquals(1, data.landmarkCount());
         assertEquals(1, data.landmark(0));
 
-        // 1 -> 2 -> 3 -> 4
         assertEquals(6.0, data.landmarkFromDistance(0, 4), 1e-9);
         assertEquals(Double.POSITIVE_INFINITY,
                 data.landmarkFromDistance(0, 0));
 
-        // 0 -> 1
         assertEquals(2.0, data.landmarkToDistance(0, 0), 1e-9);
 
-        // 4 -> 1
         assertEquals(1.0, data.landmarkToDistance(0, 4), 1e-9);
 
-        // 2 -> 3 -> 4 -> 1
         assertEquals(5.0, data.landmarkToDistance(0, 2), 1e-9);
 
         assertEquals(Double.POSITIVE_INFINITY,
@@ -108,7 +153,6 @@ class ALTTest {
         assertEquals(6.0, heuristic.estimate(1, 4), 1e-9);
         assertEquals(4.0, heuristic.estimate(2, 4), 1e-9);
 
-        // This pair gets its estimate from the reverse bound.
         assertEquals(1.0, heuristic.estimate(0, 4), 1e-9);
 
         assertEquals(0.0, heuristic.estimate(4, 4), 1e-9);
