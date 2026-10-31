@@ -156,7 +156,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
 
         SingleSourceResult run() {
             BoundedResult result = bmssp(levels, INFINITY, List.of(source));
-            if (result.bound().compareTo(INFINITY) != 0 || result.completed().size() != reachableInternalNodes) {
+            if (result.completed().size() != reachableInternalNodes) {
                 throw new IllegalStateException("Top-level BMSSP did not finish");
             }
             double[] originalDistances = new double[graph.originalToInternal.length];

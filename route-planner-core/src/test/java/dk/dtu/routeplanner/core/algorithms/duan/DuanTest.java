@@ -8,18 +8,17 @@ import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 import dk.dtu.routeplanner.core.graph.CsrGraph;
 import dk.dtu.routeplanner.core.graph.Graph;
 import dk.dtu.routeplanner.core.model.SearchResult;
 import dk.dtu.routeplanner.core.model.SingleSourceResult;
-
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DuanTest {
 
@@ -157,6 +156,18 @@ class DuanTest {
             Duan prepared = new Duan(graph, mode);
             Graph anotherGraph = graph(2, List.of());
             assertThrows(IllegalArgumentException.class, () -> prepared.computeShortestPaths(anotherGraph, 0));
+        }
+    }
+
+    @Test
+    void finishesWhenTheSizeLimitEqualsTheNodeCount() {
+        Graph graph = graph(16, List.of(
+                new Edge(12, 7, 442), new Edge(0, 12, 437), new Edge(5, 3, 977), new Edge(12, 10, 631),
+                new Edge(10, 1, 378), new Edge(10, 4, 411), new Edge(9, 11, 233), new Edge(2, 9, 84),
+                new Edge(6, 13, 692), new Edge(7, 3, 246), new Edge(6, 14, 909), new Edge(12, 15, 782),
+                new Edge(0, 6, 442), new Edge(10, 2, 9), new Edge(7, 8, 603), new Edge(12, 5, 309)));
+        for (Duan algorithm : variants(graph)) {
+            checkDistances(graph, 0, bellmanFord(graph, 0), algorithm);
         }
     }
 
