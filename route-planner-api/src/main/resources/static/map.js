@@ -136,8 +136,6 @@ function resetResults() {
 }
 
 function configureSearchType() {
-    resetResults();
-
     for (const element of document.querySelectorAll("[data-search-type]")) {
         element.hidden = element.dataset.searchType !== searchType.value;
     }
@@ -255,16 +253,18 @@ async function runSearch(compare) {
     }
 
     try {
-        // the result can only be drawn once the map has loaded
-        const [response] = await Promise.all([fetch(`${endpoint}?${params}`), mapReady]);
+        const response = await fetch(`${endpoint}?${params}`);
         const data = await response.json();
-
-        if (id !== requestId) {
-            return;
-        }
 
         if (!response.ok) {
             throw new Error(data.message || "Search request failed");
+        }
+
+        // the result can only be drawn once the map has loaded
+        await mapReady;
+
+        if (id !== requestId) {
+            return;
         }
 
         if (compare) {
@@ -286,8 +286,9 @@ async function runSearch(compare) {
     }
 }
 
-searchType.addEventListener("change", configureSearchType);
+// any change in the form, also of the search type, makes the shown results out of date
 routeForm.addEventListener("input", resetResults);
+searchType.addEventListener("change", configureSearchType);
 compareButton.addEventListener("click", () => runSearch(true));
 
 routeForm.addEventListener("submit", (event) => {
@@ -302,6 +303,7 @@ document.getElementById("hide-comparison").addEventListener("click", () => {
 
 document.getElementById("clear-route").addEventListener("click", () => {
     routeForm.reset();
+    resetResults();
     configureSearchType();
     workspace.scrollTo({ top: 0, behavior: "smooth" });
 });
