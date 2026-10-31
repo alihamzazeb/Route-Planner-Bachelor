@@ -1,6 +1,7 @@
 package dk.dtu.routeplanner.core.graph;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -88,6 +89,23 @@ public class CsrGraphTest {
         Graph g = new CsrGraph(offsets, targets, weights);
 
         assertEquals(g.edgeStart(1), g.edgeEnd(1));
+    }
+
+    @Test
+    void invalidOffsetsAreRejected() {
+        assertThrows(IllegalArgumentException.class, () -> new CsrGraph(new int[]{}, new int[]{}, new double[]{}));
+        assertThrows(IllegalArgumentException.class, () -> new CsrGraph(new int[]{1, 1}, new int[]{0}, new double[]{5}));
+        assertThrows(IllegalArgumentException.class, () -> new CsrGraph(new int[]{0, 2}, new int[]{0}, new double[]{5}));
+        assertThrows(IllegalArgumentException.class, () -> new CsrGraph(new int[]{0, 1, 0, 1}, new int[]{0}, new double[]{5}));
+    }
+
+    @Test
+    void invalidEdgesAreRejected() {
+        assertThrows(IllegalArgumentException.class, () -> new CsrGraph(new int[]{0, 1}, new int[]{0}, new double[]{}));
+        assertThrows(IllegalArgumentException.class, () -> new CsrGraph(new int[]{0, 1}, new int[]{-1}, new double[]{5}));
+        assertThrows(IllegalArgumentException.class, () -> new CsrGraph(new int[]{0, 1}, new int[]{1}, new double[]{5}));
+        assertThrows(IllegalArgumentException.class, () -> new CsrGraph(new int[]{0, 1}, new int[]{0}, new double[]{Double.NaN}));
+        assertThrows(IllegalArgumentException.class, () -> new CsrGraph(new int[]{0, 1}, new int[]{0}, new double[]{-5}));
     }
 
 }

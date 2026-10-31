@@ -71,6 +71,28 @@ public class StraightLineTest {
 
 
     @Test
+    void smallestLimitSkipsNodesAtTheSameSpot() throws IOException {
+        Path file = tempDir.resolve("same-spot.co");
+        Files.writeString(file, """
+            p aux sp co 3
+            v 1 -73530767 41085396
+            v 2 -73530767 41085396
+            v 3 -73530538 41086098
+            """);
+        StraightLine line = new StraightLine(new DimacsLoader().loadCoordinates(file));
+
+        Graph graph = new CsrGraph(
+            new int[]{0, 1, 2, 2},
+            new int[]{1, 2},
+            new double[]{0, 803}
+        );
+
+        double c = line.smallestLimit(graph);
+
+        assertEquals(1.111, c, 0.001);
+    }
+
+    @Test
     void smallestLimitOnThreeRoads() throws IOException {
         StraightLine line = new StraightLine(loadSmallCoordinates());
 

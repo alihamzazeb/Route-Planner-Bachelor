@@ -12,6 +12,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
@@ -19,6 +20,11 @@ import dk.dtu.routeplanner.core.algorithms.duan.Duan.Entry;
 import dk.dtu.routeplanner.core.algorithms.duan.DuanQueue.Item;
 
 class DuanQueueTest {
+    @Test
+    void batchSizeMustBePositive() {
+        assertThrows(IllegalArgumentException.class, () -> new DuanQueue(0, Duan.INFINITY, new Item[1]));
+    }
+
     @Test
     void mixedOperationsMatchASortedReference() {
         for (int batchSize : new int[]{1, 4, 16}) {

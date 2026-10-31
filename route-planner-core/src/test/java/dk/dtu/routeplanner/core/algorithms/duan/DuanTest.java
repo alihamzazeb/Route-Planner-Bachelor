@@ -161,6 +161,11 @@ class DuanTest {
     }
 
     @Test
+    void graphInfoNeedsAPreparedGraph() {
+        assertThrows(IllegalStateException.class, () -> new Duan().graphInfo());
+    }
+
+    @Test
     void rejectsDistanceOverflow() {
         Graph graph = graph(3, List.of(
                 new Edge(0, 1, Double.MAX_VALUE), new Edge(1, 2, Double.MAX_VALUE)));

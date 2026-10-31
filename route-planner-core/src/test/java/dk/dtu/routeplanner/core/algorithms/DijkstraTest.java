@@ -129,6 +129,7 @@ public class DijkstraTest {
 
         assertEquals(Double.POSITIVE_INFINITY, result.distance());
         assertEquals(0, result.path().length);
+        assertEquals(1, result.relaxedCounter());
     }
 
 

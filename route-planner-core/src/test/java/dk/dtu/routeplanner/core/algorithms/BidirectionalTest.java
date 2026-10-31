@@ -163,6 +163,20 @@ class BidirectionalDijkstraTest {
         BidirectionalDijkstra algorithm = new BidirectionalDijkstra(network);
         assertThrows(IllegalArgumentException.class,
                 () -> algorithm.findShortestPath(network.forward(), -1, 3));
+        assertThrows(IllegalArgumentException.class,
+                () -> algorithm.findShortestPath(network.forward(), 5, 3));
+        assertThrows(IllegalArgumentException.class,
+                () -> algorithm.findShortestPath(network.forward(), 0, -1));
+        assertThrows(IllegalArgumentException.class,
+                () -> algorithm.findShortestPath(network.forward(), 0, 5));
+    }
+
+    @Test
+    void rejectsAnotherGraph() {
+        BidirectionalDijkstra algorithm = new BidirectionalDijkstra(example());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> algorithm.findShortestPath(example().forward(), 0, 4));
     }
 
 
