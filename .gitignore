@@ -10,3 +10,5 @@ target/
 *.gr
 *.co
 **/config.local.js
+
+/report-figures/

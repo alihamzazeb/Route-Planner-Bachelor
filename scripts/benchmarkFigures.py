@@ -71,7 +71,7 @@ def save(fig, experiment, filename):
     folder = FIGURES / experiment
     folder.mkdir(parents=True, exist_ok=True)
 
-    for ext in ("pdf", "png"):
+    for ext in ("pdf",):
         fig.savefig(
             folder / (filename + "." + ext),
             bbox_inches="tight"
@@ -548,13 +548,16 @@ def experiment_b():
     )
 
     # Figure B12: Estimated ALT break-even
-    original_prep = csv_rows("NY-preprocessing.csv")
 
-    alt_setup = sum(
-        float(r["landmark_selection_ms"])
-        + float(r["alt_preprocessing_ms"])
-        for r in original_prep
-    ) / len(original_prep)
+    setup_data = csv_rows("NY-landmark-selection-setup.csv")
+
+    alt_setup = next(
+        float(row["total_setup_ms"])
+        for row in setup_data
+        if row["method"] == "random"
+        and int(row["landmarks"]) == 4
+    )
+
 
     fig, ax = new_plot(
         "Estimated cumulative runtime: ALT vs Dijkstra",
