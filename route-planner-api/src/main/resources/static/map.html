@@ -18,22 +18,30 @@
             </div>
 
             <section class="panel">
-                <h2>Plan a Route</h2>
-                <p>Choose a starting node, destination, and routing algorithm.</p>
+                <h2 id="query-title">Plan a Route</h2>
+                <p id="query-description">Choose a starting node, destination, and routing algorithm.</p>
 
                 <form id="route-form">
+                    <div class="form-group">
+                        <label for="search-type">Search type</label>
+                        <select id="search-type">
+                            <option value="point-to-point">Point-to-point</option>
+                            <option value="single-source">Single-source</option>
+                        </select>
+                    </div>
+
                     <div class="form-group">
                         <label for="source">Starting node</label>
                         <input type="number" id="source" placeholder="e.g. 10" min="0" step="1" required>
                     </div>
 
-                    <div class="form-group">
+                    <div class="form-group" id="target-group">
                         <label for="target">Destination node</label>
                         <input type="number" id="target" placeholder="e.g. 500" min="0" step="1" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="algorithm">Routing algorithm</label>
+                        <label for="algorithm">Algorithm</label>
                         <select id="algorithm">
                             <option value="dijkstra">Dijkstra</option>
                             <option value="bidirectional">Bidirectional Dijkstra</option>
@@ -42,7 +50,7 @@
                         </select>
                     </div>
 
-                    <button type="submit" class="find-button">Find Route</button>
+                    <button type="submit" id="find-route" class="find-button">Find Route</button>
                     <button type="button" id="compare-all" class="compare-button">Compare All Algorithms</button>
                     <button type="button" id="clear-route" class="clear-button">Clear</button>
                     <p id="route-message" role="status" aria-live="polite"></p>
@@ -50,14 +58,14 @@
             </section>
 
             <section class="panel">
-                <h2>Route Details</h2>
+                <h2 id="result-title">Route Details</h2>
                 <p id="route-placeholder">Calculate a route to see the results.</p>
 
                 <div id="route-results" class="route-results" hidden>
                     <div class="result-distance">
-                        <span>Shortest-path distance</span>
+                        <span id="result-distance-label">Shortest-path distance</span>
                         <strong id="result-distance">-</strong>
-                        <small>Road distance</small>
+                        <small id="result-distance-unit">Road distance</small>
                     </div>
 
                     <div class="result-grid">
@@ -70,18 +78,23 @@
                             <strong id="result-algorithm">-</strong>
                         </div>
                         <div class="result-item">
-                            <span>Path nodes</span>
+                            <span id="result-count-label">Path nodes</span>
                             <strong id="result-path-nodes">-</strong>
                         </div>
                         <div class="result-item">
-                            <span>Settled nodes</span>
+                            <span id="result-settled-label">Settled nodes</span>
                             <strong id="result-settled">-</strong>
                         </div>
                         <div class="result-item">
                             <span>Relaxed edges</span>
                             <strong id="result-relaxed">-</strong>
                         </div>
+                        <div class="result-item" id="result-time-item" hidden>
+                            <span>Computation time</span>
+                            <strong id="result-time">-</strong>
+                        </div>
                     </div>
+                    <p id="single-source-note" hidden>Duan's graph preparation runs once at startup and is not included in the time. Duan counts completed original nodes and scans of its internal edges.</p>
                 </div>
             </section>
 
@@ -98,19 +111,19 @@
                 <div class="comparison-inner">
                     <div class="comparison-header">
                         <div>
-                            <p class="comparison-label">Same source and destination</p>
+                            <p class="comparison-label" id="comparison-label">Same source and destination</p>
                             <h2 id="comparison-title">Algorithm Comparison</h2>
                             <p id="comparison-route"></p>
                         </div>
                         <button type="button" id="hide-comparison" class="comparison-close">Hide</button>
                     </div>
 
-                    <p class="comparison-description">
+                    <p class="comparison-description" id="comparison-description">
                         Search work and query time for all four algorithms on the same route.
                     </p>
 
                     <div class="comparison-table-container">
-                        <table class="comparison-table">
+                        <table class="comparison-table" id="point-to-point-table">
                             <thead>
                                 <tr>
                                     <th>Algorithm</th>
@@ -125,34 +138,58 @@
                                 <tr data-algorithm="dijkstra">
                                     <td>Dijkstra</td>
                                     <td><div class="comparison-track"><div class="comparison-fill"></div></div></td>
-                                    <td data-field="settled">—</td>
-                                    <td data-field="relaxed">—</td>
-                                    <td data-field="time">—</td>
-                                    <td data-field="distance">—</td>
+                                    <td data-field="settled">-</td>
+                                    <td data-field="relaxed">-</td>
+                                    <td data-field="time">-</td>
+                                    <td data-field="distance">-</td>
                                 </tr>
                                 <tr data-algorithm="bidirectional">
                                     <td>Bidirectional Dijkstra</td>
                                     <td><div class="comparison-track"><div class="comparison-fill"></div></div></td>
-                                    <td data-field="settled">—</td>
-                                    <td data-field="relaxed">—</td>
-                                    <td data-field="time">—</td>
-                                    <td data-field="distance">—</td>
+                                    <td data-field="settled">-</td>
+                                    <td data-field="relaxed">-</td>
+                                    <td data-field="time">-</td>
+                                    <td data-field="distance">-</td>
                                 </tr>
                                 <tr data-algorithm="astar">
                                     <td>A*</td>
                                     <td><div class="comparison-track"><div class="comparison-fill"></div></div></td>
-                                    <td data-field="settled">—</td>
-                                    <td data-field="relaxed">—</td>
-                                    <td data-field="time">—</td>
-                                    <td data-field="distance">—</td>
+                                    <td data-field="settled">-</td>
+                                    <td data-field="relaxed">-</td>
+                                    <td data-field="time">-</td>
+                                    <td data-field="distance">-</td>
                                 </tr>
                                 <tr data-algorithm="alt">
                                     <td>ALT</td>
                                     <td><div class="comparison-track"><div class="comparison-fill"></div></div></td>
-                                    <td data-field="settled">—</td>
-                                    <td data-field="relaxed">—</td>
-                                    <td data-field="time">—</td>
-                                    <td data-field="distance">—</td>
+                                    <td data-field="settled">-</td>
+                                    <td data-field="relaxed">-</td>
+                                    <td data-field="time">-</td>
+                                    <td data-field="distance">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <table class="comparison-table single-source-table" id="single-source-table" hidden>
+                            <thead>
+                                <tr>
+                                    <th>Algorithm</th>
+                                    <th>Settled / completed nodes</th>
+                                    <th>Relaxed edges</th>
+                                    <th>Computation time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr data-algorithm="dijkstra">
+                                    <td>Dijkstra (single-source)</td>
+                                    <td data-field="settled">-</td>
+                                    <td data-field="relaxed">-</td>
+                                    <td data-field="time">-</td>
+                                </tr>
+                                <tr data-algorithm="duan">
+                                    <td>Duan (single-source)</td>
+                                    <td data-field="settled">-</td>
+                                    <td data-field="relaxed">-</td>
+                                    <td data-field="time">-</td>
                                 </tr>
                             </tbody>
                         </table>

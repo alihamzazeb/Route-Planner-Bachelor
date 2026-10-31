@@ -196,10 +196,8 @@ html, body {
     gap: 14px;
 }
 
-.route-results[hidden],
-#route-placeholder[hidden],
-.comparison-section[hidden] {
-    display: none;
+[hidden] {
+    display: none !important;
 }
 
 .result-distance,
@@ -425,4 +423,13 @@ html, body {
     .comparison-header h2 {
         font-size: 20px;
     }
+}
+
+.single-source-table {
+    min-width: 560px;
+}
+
+.single-source-table th:nth-child(2),
+.single-source-table td:nth-child(2) {
+    width: auto;
 }

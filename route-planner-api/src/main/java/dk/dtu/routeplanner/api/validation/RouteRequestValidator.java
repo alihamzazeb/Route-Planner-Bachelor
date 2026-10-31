@@ -5,7 +5,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 public final class RouteRequestValidator {
 
-    public static void validateNodes(int source, int target, int nodeCount) {
+    public static void validateSource(int source, int nodeCount) {
 
         if (source < 0 || source >= nodeCount) {
             throw new ResponseStatusException(
@@ -13,6 +13,11 @@ public final class RouteRequestValidator {
                     "Invalid source node: " + source
             );
         }
+
+    }
+
+    public static void validateNodes(int source, int target, int nodeCount) {
+        validateSource(source, nodeCount);
 
         if (target < 0 || target >= nodeCount) {
             throw new ResponseStatusException(

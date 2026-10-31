@@ -10,19 +10,24 @@ import org.springframework.stereotype.Service;
 import dk.dtu.routeplanner.api.dto.ComparisonResponse;
 import dk.dtu.routeplanner.api.dto.ComparisonResult;
 import dk.dtu.routeplanner.api.dto.RouteResponse;
+import dk.dtu.routeplanner.api.dto.SingleSourceComparisonResponse;
+import dk.dtu.routeplanner.api.dto.SingleSourceResponse;
 import dk.dtu.routeplanner.core.algorithms.AStar;
 import dk.dtu.routeplanner.core.algorithms.BidirectionalDijkstra;
 import dk.dtu.routeplanner.core.algorithms.Dijkstra;
 import dk.dtu.routeplanner.core.algorithms.PointToPointAlgorithm;
+import dk.dtu.routeplanner.core.algorithms.SingleSourceAlgorithm;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkHeuristic;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkPreprocessor;
 import dk.dtu.routeplanner.core.algorithms.alt.RandomLandmarkSelector;
+import dk.dtu.routeplanner.core.algorithms.duan.Duan;
 import dk.dtu.routeplanner.core.graph.Coordinates;
 import dk.dtu.routeplanner.core.graph.RoadNetwork;
 import dk.dtu.routeplanner.core.graph.StraightLine;
 import dk.dtu.routeplanner.core.loader.DimacsLoader;
 import dk.dtu.routeplanner.core.model.LandmarkPreprocessingResult;
 import dk.dtu.routeplanner.core.model.SearchResult;
+import dk.dtu.routeplanner.core.model.SingleSourceResult;
 
 @Service
 public class RoutePlannerService {
@@ -32,6 +37,7 @@ public class RoutePlannerService {
     private final BidirectionalDijkstra bidirectional;
     private final AStar aStar;
     private final AStar alt;
+    private final Duan duan;
     private final Coordinates coordinates;
 
 
@@ -58,6 +64,9 @@ public class RoutePlannerService {
         LandmarkPreprocessingResult preprocessing = new LandmarkPreprocessor(network).preprocess(landmarks);
 
         this.alt = new AStar(new LandmarkHeuristic(preprocessing));
+
+        // Duan, the graph is prepared once here like the ALT landmarks, so it is not part of the query time
+        this.duan = new Duan(network.forward(), Duan.DegreeMode.BOUNDED);
 
     }
 
@@ -180,6 +189,95 @@ public class RoutePlannerService {
     private record MeasuredRoute(
             SearchResult result,
             ComparisonResult comparison
+    ) {
+    }
+
+
+    public SingleSourceResponse computeSingleSource(int source, String algorithm) {
+
+        SingleSourceAlgorithm selected = switch (algorithm) {
+            case "dijkstra" -> dijkstra;
+            case "duan" -> duan;
+            default -> throw new IllegalArgumentException("Unknown single-source algorithm: " + algorithm);
+        };
+
+        return measureSingleSource(algorithm, selected, source).summary();
+    }
+
+    public SingleSourceComparisonResponse compareSingleSource(int source, String selectedAlgorithm) {
+
+        MeasuredSingleSource dijkstraRun = measureSingleSource("dijkstra", dijkstra, source);
+        MeasuredSingleSource duanRun = measureSingleSource("duan", duan, source);
+
+        MeasuredSingleSource selected = switch (selectedAlgorithm) {
+            case "dijkstra" -> dijkstraRun;
+            case "duan" -> duanRun;
+            default -> throw new IllegalArgumentException("Unknown single-source algorithm: " + selectedAlgorithm);
+        };
+
+        return new SingleSourceComparisonResponse(
+                source,
+                selected.summary(),
+                List.of(dijkstraRun.summary(), duanRun.summary()),
+                nodeCount(),
+                countDistanceMismatches(dijkstraRun.result(), duanRun.result(), nodeCount())
+        );
+    }
+
+    private MeasuredSingleSource measureSingleSource(String name, SingleSourceAlgorithm algorithm, int source) {
+        long start = System.nanoTime();
+
+        SingleSourceResult result = algorithm.computeShortestPaths(network.forward(), source);
+
+        double timeMs = (System.nanoTime() - start) / 1000000.0;
+
+        int nodeCount = nodeCount();
+        int reachable = 0;
+
+        for (int node = 0; node < nodeCount; node++) {
+            if (Double.isFinite(result.distance(node))) {
+                reachable++;
+            }
+        }
+
+        double[] location = nodeCoordinates(source);
+
+        SingleSourceResponse summary = new SingleSourceResponse(
+                name,
+                source,
+                nodeCount,
+                reachable,
+                nodeCount - reachable,
+                result.settledCounter(),
+                result.relaxedCounter(),
+                timeMs,
+                location[0],
+                location[1]
+        );
+
+        return new MeasuredSingleSource(result, summary);
+    }
+
+    // unreachable nodes count as equal when both are infinite, reached nodes when within 1e-6
+    static int countDistanceMismatches(SingleSourceResult expected, SingleSourceResult actual, int nodeCount) {
+        int mismatches = 0;
+
+        for (int node = 0; node < nodeCount; node++) {
+            double a = expected.distance(node);
+            double b = actual.distance(node);
+            boolean equal = a == b || (Double.isFinite(a) && Double.isFinite(b) && Math.abs(a - b) <= 1e-6);
+
+            if (!equal) {
+                mismatches++;
+            }
+        }
+
+        return mismatches;
+    }
+
+    private record MeasuredSingleSource(
+            SingleSourceResult result,
+            SingleSourceResponse summary
     ) {
     }
 
