@@ -19,7 +19,6 @@ import dk.dtu.routeplanner.core.model.SearchResult;
 
 class BidirectionalDijkstraTest {
 
-    // Directed graph: 0 -> 1 -> 2 -> 3 -> 4 costs 2+2+2+1 = 7.
     private RoadNetwork example() {
         Graph forward = new CsrGraph(
                 new int[]{0, 2, 4, 5, 6, 6},
@@ -88,7 +87,7 @@ class BidirectionalDijkstraTest {
                 Arrays.fill(weights[u], Double.POSITIVE_INFINITY);
                 for (int v = 0; v < n; v++) {
                     if (u != v && random.nextDouble() < 0.35) {
-                        weights[u][v] = random.nextInt(11); // zero-weight edges are supported
+                        weights[u][v] = random.nextInt(11);
                     }
                 }
             }

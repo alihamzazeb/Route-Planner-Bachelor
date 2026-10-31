@@ -23,7 +23,6 @@ import dk.dtu.routeplanner.core.loader.DimacsLoader;
 import dk.dtu.routeplanner.core.model.LandmarkPreprocessingResult;
 import dk.dtu.routeplanner.core.model.SearchResult;
 
-
 public class BenchmarkRunner {
 
     public static void main(String[] args) throws IOException {
@@ -37,12 +36,10 @@ public class BenchmarkRunner {
         StraightLine straightLine = new StraightLine(coordinates);
         double c = straightLine.smallestLimit(graph);
 
-        // save the selected landmarks
         int[] landmarks = new RandomLandmarkSelector().select(graph, BenchmarkConfig.LANDMARK_COUNT, BenchmarkConfig.LANDMARK_SEED);
 
         LandmarkPreprocessingResult preprocessing = new LandmarkPreprocessor(network).preprocess(landmarks);
 
-        // will use them in the for loop, later
         PointToPointAlgorithm[] algorithms = {
                 new Dijkstra(),
                 new BidirectionalDijkstra(network),
@@ -57,16 +54,16 @@ public class BenchmarkRunner {
                 "ALT"
         };
 
+        // Read the saved balanced workload.
+        int[][] queries = Workloads.readPairs(BenchmarkConfig.NY_WORKLOAD, graph.nodeCount(), BenchmarkConfig.PAIR_COUNT);
 
-        int[][] queries = Workloads.generateReachablePairs(graph, BenchmarkConfig.PAIR_COUNT, BenchmarkConfig.QUERY_SEED);
         List<String> csvLines = new ArrayList<>();
-
         csvLines.add("pair_id,algorithm,source,target,distance,settled,relaxed");
-
-        int pairId = 0;
 
         System.out.println("New York road network");
         System.out.println("Nodes: " + graph.nodeCount());
+
+        int pairId = 0;
 
         for (int[] query : queries) {
             pairId++;
@@ -74,9 +71,9 @@ public class BenchmarkRunner {
             int source = query[0];
             int target = query[1];
 
-            System.out.println("\nRoute " + source + " -> " + target);
-
             double expectedDistance = Double.NaN;
+
+            System.out.println("\nRoute " + source + " -> " + target);
 
             for (int i = 0; i < algorithms.length; i++) {
 
@@ -97,51 +94,43 @@ public class BenchmarkRunner {
                     }
 
                 } else if (!sameDistance(expectedDistance, result.distance())) {
-
                     throw new IllegalStateException(
-                            names[i] + " returned an incorrect distance for " + source + " -> " + target
-                    );
+                            names[i] + " returned incorrect distance for " + source + " -> " + target);
                 }
 
                 System.out.printf(
-                        "%-24s distance: %-10.0f settled: %-8d relaxed: %-8d time: %.3f ms%n",
+                        "%-24s distance: %-10.0f settled: %-8d " + "relaxed: %-8d time: %.3f ms%n",
                         names[i],
                         result.distance(),
                         result.settledCounter(),
                         result.relaxedCounter(),
                         elapsed / 1000000.0
                 );
+
                 csvLines.add(
-                    pairId + "," +
-                    names[i] + "," +
-                    source + "," +
-                    target + "," +
-                    result.distance() + "," +
-                    result.settledCounter() + "," +
-                    result.relaxedCounter()
+                        pairId + ","
+                                + names[i] + ","
+                                + source + ","
+                                + target + ","
+                                + result.distance() + ","
+                                + result.settledCounter() + ","
+                                + result.relaxedCounter()
                 );
             }
 
             System.out.println("All four algorithms agree.");
         }
+        Path csvPath = Path.of("benchmark-data/results/NY-balanced-seed42-counters.csv");
+        Files.createDirectories(csvPath.getParent());
+        Files.write(csvPath, csvLines, StandardCharsets.UTF_8);
 
         System.out.println("\nBenchmark workload completed");
         System.out.println("Validated reachable pairs: " + queries.length);
-
-        Workloads.savePairs(BenchmarkConfig.NY_WORKLOAD, queries);
-        System.out.println("Workload saved to: " + BenchmarkConfig.NY_WORKLOAD);
-
-        Path csvPath = Path.of("benchmark-data/results/NY-100pairs-seed42-counters.csv");
-
-        Files.write(csvPath, csvLines, StandardCharsets.UTF_8);
-
         System.out.println("Counter results saved to: " + csvPath);
         System.out.println("Rows saved: " + (csvLines.size() - 1));
-
     }
 
     private static boolean sameDistance(double a, double b) {
-        // if the node is not reachable they remain infinity. so we check for that
         if (Double.isInfinite(a) || Double.isInfinite(b)) {
             return a == b;
         }
@@ -149,8 +138,7 @@ public class BenchmarkRunner {
         return Math.abs(a - b) <= 0.000001;
     }
 
-    // checks if the path is valid or not
-    private static void validatePath(Graph graph, int source, int target,SearchResult result) {
+    private static void validatePath(Graph graph, int source, int target, SearchResult result) {
         int[] path = result.path();
 
         if (!Double.isFinite(result.distance())) {
@@ -169,6 +157,7 @@ public class BenchmarkRunner {
         for (int i = 0; i < path.length - 1; i++) {
             int from = path[i];
             int to = path[i + 1];
+            
             double edgeWeight = Double.POSITIVE_INFINITY;
 
             for (int edge = graph.edgeStart(from); edge < graph.edgeEnd(from); edge++) {
@@ -178,9 +167,7 @@ public class BenchmarkRunner {
             }
 
             if (!Double.isFinite(edgeWeight)) {
-                throw new IllegalStateException(
-                        "Missing edge: " + from + " -> " + to
-                );
+                throw new IllegalStateException("Missing edge: " + from + " -> " + to);
             }
 
             totalDistance += edgeWeight;
