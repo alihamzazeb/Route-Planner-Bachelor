@@ -1,4 +1,8 @@
+
 package dk.dtu.routeplanner.api.controller;
+
+import java.util.Locale;
+import java.util.Set;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,56 +18,42 @@ import dk.dtu.routeplanner.core.model.SearchResult;
 
 @RestController
 public class RouteController {
-
+    private static final Set<String> ALGORITHMS = Set.of("dijkstra", "bidirectional", "astar", "alt");
     private final RoutePlannerService service;
 
     public RouteController(RoutePlannerService service) {
         this.service = service;
     }
 
-    
-
     @GetMapping("/api/routes")
-    public RouteResponse findRoute(@RequestParam("source") int source, @RequestParam("target") int target, @RequestParam(name = "algorithm", defaultValue = "dijkstra") String algorithm) {
-
+    public RouteResponse findRoute(@RequestParam("source") int source, @RequestParam("target") int target,@RequestParam(name = "algorithm", defaultValue = "dijkstra") String algorithm) {
         RouteRequestValidator.validateNodes(source, target, service.nodeCount());
-        
-        SearchResult result;
 
-        if (algorithm.equalsIgnoreCase("dijkstra")){
-            result= service.findResult(source, target);
-        }
+        String selectedAlgorithm = validateAlgorithm(algorithm);
 
-        else if (algorithm.equalsIgnoreCase("bidirectional")) {
-            result = service.findBidirectionalResult(source, target);
-
-        } else if (algorithm.equalsIgnoreCase("astar")) {
-            result = service.findAStarResult(source, target);
-        } else if (algorithm.equalsIgnoreCase("alt")) {
-            result = service.findALTResult(source, target);
-        } else {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown algorithm: " + algorithm);
-        }
+        SearchResult result = switch (selectedAlgorithm) {
+            case "dijkstra" -> service.findResult(source, target);
+            case "bidirectional" -> service.findBidirectionalResult(source, target);
+            case "astar" -> service.findAStarResult(source, target);
+            case "alt" -> service.findALTResult(source, target);
+            default -> throw new IllegalStateException("Unrecognized algorithm");
+        };
 
         boolean reachable = Double.isFinite(result.distance());
-
-        Double distance = reachable ? result.distance() : null;
-        
         int[] path = result.path();
 
         return new RouteResponse(
-                algorithm.toLowerCase(java.util.Locale.ROOT),
+                selectedAlgorithm,
                 source,
                 target,
                 reachable,
-                distance,
+                reachable ? result.distance() : null,
                 path,
                 service.pathCoordinates(path),
                 result.settledCounter(),
                 result.relaxedCounter()
         );
     }
-
 
     @GetMapping("/api/routes/compare")
     public ComparisonResponse compareRoutes(
@@ -72,16 +62,16 @@ public class RouteController {
             @RequestParam(name = "algorithm", defaultValue = "dijkstra") String algorithm
     ) {
         RouteRequestValidator.validateNodes(source, target, service.nodeCount());
+        return service.compareAlgorithms(source, target, validateAlgorithm(algorithm));
+    }
 
-        String selectedAlgorithm = algorithm.toLowerCase(java.util.Locale.ROOT);
+    private static String validateAlgorithm(String algorithm) {
+        String selected = algorithm.toLowerCase(Locale.ROOT);
 
-        if (!java.util.Set.of("dijkstra", "bidirectional", "astar", "alt").contains(selectedAlgorithm)) {
+        if (!ALGORITHMS.contains(selected)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown algorithm: " + algorithm);
         }
 
-        return service.compareAlgorithms(source, target, selectedAlgorithm);
+        return selected;
     }
-
-
-
 }
