@@ -1,5 +1,5 @@
 
-package dk.dtu.routeplanner.benchmark;
+package dk.dtu.routeplanner.benchmark.expb;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -14,22 +14,18 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
 
 import dk.dtu.routeplanner.core.algorithms.AStar;
-import dk.dtu.routeplanner.core.algorithms.alt.GeographicFarthestLandmarkSelector;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkHeuristic;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkPreprocessor;
 import dk.dtu.routeplanner.core.algorithms.alt.RandomLandmarkSelector;
 import dk.dtu.routeplanner.core.graph.Graph;
 import dk.dtu.routeplanner.core.graph.RoadNetwork;
-import dk.dtu.routeplanner.core.graph.StraightLine;
 import dk.dtu.routeplanner.core.loader.DimacsLoader;
+import dk.dtu.routeplanner.core.model.SearchResult;
 
 @State(Scope.Benchmark)
-public class LandmarkSelectionBenchmark {
+public class LandmarkSensitivityBenchmark {
 
-    @Param({"random", "farthest"})
-    public String selectionMethod;
-
-    @Param({"4", "8"})
+    @Param({"1", "2", "4", "8"})
     public int landmarkCount;
 
     private Graph graph;
@@ -40,6 +36,7 @@ public class LandmarkSelectionBenchmark {
     public void setup() throws IOException {
         DimacsLoader loader = new DimacsLoader();
         RoadNetwork network = loader.load(Path.of("data/USA-road-d.NY.gr"));
+
         graph = network.forward();
 
         queries = Workloads.readPairs(
@@ -48,42 +45,22 @@ public class LandmarkSelectionBenchmark {
                 BenchmarkConfig.PAIR_COUNT
         );
 
-        int[] landmarks;
+        int[] landmarks = new RandomLandmarkSelector().select(
+                graph,
+                landmarkCount,
+                BenchmarkConfig.LANDMARK_SEED
+        );
 
-        if (selectionMethod.equals("random")) {
-            landmarks = new RandomLandmarkSelector().select(
-                    graph,
-                    landmarkCount,
-                    BenchmarkConfig.LANDMARK_SEED
-            );
-
-        } else if (selectionMethod.equals("farthest")) {
-
-            StraightLine straightLine = new StraightLine(loader.loadCoordinates(Path.of("data/USA-road-d.NY.co"))
-            );
-
-            landmarks = new GeographicFarthestLandmarkSelector()
-                    .select(
-                            graph,
-                            straightLine,
-                            landmarkCount,
-                            BenchmarkConfig.LANDMARK_SEED
-                    );
-
-        } else {
-            throw new IllegalArgumentException("Unknown selection method: " + selectionMethod);
-        }
-
-        var prepared = new LandmarkPreprocessor(network).preprocess(landmarks);
-
-        alt = new AStar(new LandmarkHeuristic(prepared));
+        var data = new LandmarkPreprocessor(network).preprocess(landmarks);
+        alt = new AStar(new LandmarkHeuristic(data));
     }
 
     @Benchmark
     @OperationsPerInvocation(BenchmarkConfig.PAIR_COUNT)
     public void search(Blackhole blackhole) {
-        for (int[] pair : queries) {
-            blackhole.consume(alt.findShortestPath(graph, pair[0], pair[1]));
+        for (int[] query : queries) {
+            SearchResult result = alt.findShortestPath(graph, query[0], query[1]);
+            blackhole.consume(result);
         }
     }
 }

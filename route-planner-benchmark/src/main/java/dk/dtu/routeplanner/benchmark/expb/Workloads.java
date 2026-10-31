@@ -1,4 +1,4 @@
-package dk.dtu.routeplanner.benchmark;
+package dk.dtu.routeplanner.benchmark.expb;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
