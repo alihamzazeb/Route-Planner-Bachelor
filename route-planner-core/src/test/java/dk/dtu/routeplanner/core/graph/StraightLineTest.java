@@ -6,6 +6,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -109,6 +110,8 @@ public class StraightLineTest {
 
     @Test
     void smallestLimitOnNewYork() throws IOException {
+        assumeTrue(Files.isRegularFile(NEW_YORK_GRAPH_PATH), "New York graph not available");
+        assumeTrue(Files.isRegularFile(NEW_YORK_COORDINATES_PATH), "New York coordinates not available");
         DimacsLoader loader = new DimacsLoader();
         RoadNetwork network = loader.load(NEW_YORK_GRAPH_PATH);
         StraightLine line = new StraightLine(loader.loadCoordinates(NEW_YORK_COORDINATES_PATH));
@@ -122,6 +125,8 @@ public class StraightLineTest {
 
     @Test
     void onlyTinyRoadsFallBelowOne() throws IOException {
+        assumeTrue(Files.isRegularFile(NEW_YORK_GRAPH_PATH), "New York graph not available");
+        assumeTrue(Files.isRegularFile(NEW_YORK_COORDINATES_PATH), "New York coordinates not available");
         DimacsLoader loader = new DimacsLoader();
         Graph graph = loader.load(NEW_YORK_GRAPH_PATH).forward();
         StraightLine line = new StraightLine(loader.loadCoordinates(NEW_YORK_COORDINATES_PATH));

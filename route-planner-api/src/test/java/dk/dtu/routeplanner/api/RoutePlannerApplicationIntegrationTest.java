@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@EnabledIf("hasNewYorkData")
 @SpringBootTest
 @AutoConfigureMockMvc
 class RoutePlannerApplicationIntegrationTest {
@@ -45,6 +47,16 @@ class RoutePlannerApplicationIntegrationTest {
         }
 
         throw new IllegalStateException("Missing dataset file: " + filename);
+    }
+
+    static boolean hasNewYorkData() {
+        try {
+            findDataFile("USA-road-d.NY.gr");
+            findDataFile("USA-road-d.NY.co");
+            return true;
+        } catch (IllegalStateException e) {
+            return false;
+        }
     }
 
     @ParameterizedTest

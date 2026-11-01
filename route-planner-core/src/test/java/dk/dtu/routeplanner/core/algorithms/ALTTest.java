@@ -1,6 +1,7 @@
 package dk.dtu.routeplanner.core.algorithms;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
@@ -9,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import org.junit.jupiter.api.Test;
 
 import dk.dtu.routeplanner.core.algorithms.alt.GeographicFarthestLandmarkSelector;
@@ -285,6 +287,7 @@ class ALTTest {
 
     @Test
     void altAgreesWithDijkstraOnNewYork() throws IOException {
+        assumeTrue(Files.isRegularFile(Path.of("../data/USA-road-d.NY.gr")), "New York graph not available");
 
         RoadNetwork network = new DimacsLoader().load(
                 Path.of("../data/USA-road-d.NY.gr")

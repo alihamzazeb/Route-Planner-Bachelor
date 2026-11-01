@@ -1,10 +1,12 @@
 package dk.dtu.routeplanner.core.algorithms;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import org.junit.jupiter.api.Test;
 
 import dk.dtu.routeplanner.core.graph.CsrGraph;
@@ -78,6 +80,7 @@ public class DijkstraTest {
 
     @Test
     void runsOnNewYork() throws IOException {
+        assumeTrue(Files.isRegularFile(Path.of("../data/USA-road-d.NY.gr")), "New York graph not available");
         RoadNetwork network = new DimacsLoader().load(Path.of("../data/USA-road-d.NY.gr"));
 
         long start = System.nanoTime();
@@ -100,6 +103,7 @@ public class DijkstraTest {
 
     @Test
     void pointToPointAgreesWithSingleSource() throws IOException {
+        assumeTrue(Files.isRegularFile(Path.of("../data/USA-road-d.NY.gr")), "New York graph not available");
         RoadNetwork network = new DimacsLoader().load(Path.of("../data/USA-road-d.NY.gr"));
         Graph graph = network.forward();
 

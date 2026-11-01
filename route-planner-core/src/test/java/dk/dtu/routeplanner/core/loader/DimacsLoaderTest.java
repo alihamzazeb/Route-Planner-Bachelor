@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -69,6 +70,7 @@ public class DimacsLoaderTest {
 
     @Test
     void loadsNewYork() throws IOException {
+        assumeTrue(Files.isRegularFile(NEW_YORK), "New York graph not available");
         RoadNetwork network = new DimacsLoader().load(NEW_YORK);
         assertEquals(264346, network.forward().nodeCount());
         assertEquals(264346, network.reverse().nodeCount());
@@ -76,6 +78,7 @@ public class DimacsLoaderTest {
 
     @Test
     void newYorkReverseMatchesForward() throws IOException {
+        assumeTrue(Files.isRegularFile(NEW_YORK), "New York graph not available");
         assertReverseMatchesForward(new DimacsLoader().load(NEW_YORK));
     }
 
@@ -129,6 +132,7 @@ public class DimacsLoaderTest {
 
     @Test
     void loadsNewYorkCoordinates() throws IOException {
+        assumeTrue(Files.isRegularFile(NEW_YORK_COORDINATES_PATH), "New York coordinates not available");
         Coordinates coordinates = new DimacsLoader().loadCoordinates(NEW_YORK_COORDINATES_PATH);
         assertEquals(264346, coordinates.longitude().length);
         assertEquals(264346, coordinates.latitude().length);
