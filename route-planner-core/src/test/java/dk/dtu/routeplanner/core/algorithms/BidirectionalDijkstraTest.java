@@ -64,22 +64,6 @@ class BidirectionalDijkstraTest {
     }
 
     @Test
-    void comparesAllPairsAgainstDijkstra() {
-        RoadNetwork network = example();
-        BidirectionalDijkstra bidirectional = new BidirectionalDijkstra(network);
-        Dijkstra reference = new Dijkstra();
-
-        for (int source = 0; source < network.forward().nodeCount(); source++) {
-            for (int target = 0; target < network.forward().nodeCount(); target++) {
-                SearchResult expected = reference.findShortestPath(network.forward(), source, target);
-                SearchResult actual = bidirectional.findShortestPath(network.forward(), source, target);
-                assertEquals(expected.distance(), actual.distance(), 1e-10,
-                        "Mismatch from " + source + " to " + target);
-            }
-        }
-    }
-
-    @Test
     void randomDirectedGraphsAgreeWithDijkstra() {
         Random random = new Random(42);
         for (int graphNumber = 0; graphNumber < 30; graphNumber++) {

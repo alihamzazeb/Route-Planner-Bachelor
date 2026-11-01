@@ -147,6 +147,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             dist[source] = 0;
             hops[source] = 0;
 
+            // k, t and levels like in the paper
             double log = Math.log(Math.max(2, n)) / Math.log(2);
             k = Math.max(1, (int) Math.cbrt(log));
             t = Math.max(1, (int) Math.pow(log, 2.0 / 3.0));
@@ -205,6 +206,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
 
         private BoundedResult bmssp(int level, Entry bound, List<Integer> sources) {
             Workspace workspace = workspace(level);
+            // level 0 is the base case
             if (level == 0) {
                 return baseCase(bound, sources, workspace.completed);
             }
@@ -228,6 +230,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
 
                 VertexSet prepend = workspace.prepend;
                 prepend.clear();
+                // relax the edges of the nodes that just got completed
                 for (int node : part.completed()) {
                     for (int edge = graph.edgeStart(node); edge < graph.edgeEnd(node); edge++) {
                         if (!relax(node, edge, INFINITY)) {
@@ -275,6 +278,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             VertexSet next = workspace.next;
             visited.addAll(sources);
             frontier.addAll(sources);
+            // relax k rounds from the sources, like bellman-ford
             for (int step = 0; step < k; step++) {
                 next.clear();
                 for (int node : frontier.values) {
@@ -296,6 +300,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
                 next = previous;
             }
 
+            // sources with at least k nodes in their tree become pivots
             for (int node : visited.values) {
                 children[node] = 0;
                 subtreeSize[node] = 1;
@@ -333,6 +338,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
         }
 
         private boolean hasForestParent(int node, VertexSet visited) {
+            // the prev edge only counts if it still matches the distances
             int parent = prev[node];
             return parent >= 0 && visited.contains(parent)
                     && hops[parent] + 1 == hops[node]
@@ -343,6 +349,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             if (sources.size() != 1) {
                 throw new IllegalStateException("Base case needs exactly one source");
             }
+            // small dijkstra that stops after k + 1 nodes
             PriorityQueue<Entry> queue = new PriorityQueue<>();
             queue.add(entry(sources.get(0)));
             Entry last = bound;
@@ -393,6 +400,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             if (comparison == 0) {
                 comparison = Integer.compare(newHops, hops[neighbour]);
             }
+            // on a tie the smaller node wins, and the same node can relax again
             if (comparison > 0 || (comparison == 0 && node > prev[neighbour])) {
                 return false;
             }

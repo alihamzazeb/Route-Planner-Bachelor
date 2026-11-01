@@ -39,20 +39,7 @@ public class RouteController {
             default -> throw new IllegalStateException("Unrecognized algorithm");
         };
 
-        boolean reachable = Double.isFinite(result.distance());
-        int[] path = result.path();
-
-        return new RouteResponse(
-                selectedAlgorithm,
-                source,
-                target,
-                reachable,
-                reachable ? result.distance() : null,
-                path,
-                service.pathCoordinates(path),
-                result.settledCounter(),
-                result.relaxedCounter()
-        );
+        return service.toRouteResponse(selectedAlgorithm, source, target, result);
     }
 
     @GetMapping("/api/routes/compare")

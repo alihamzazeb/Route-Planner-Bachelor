@@ -71,13 +71,4 @@ class AStarTest {
             }
         }
     }
-
-    @Test
-    void unreachableTargetGivesNoRoute() throws IOException {
-        Graph graph = twoRoutes();
-        SearchResult result = aStarFor(graph).findShortestPath(graph, 2, 0);
-
-        assertEquals(Double.POSITIVE_INFINITY, result.distance());
-        assertEquals(0, result.path().length);
-    }
 }

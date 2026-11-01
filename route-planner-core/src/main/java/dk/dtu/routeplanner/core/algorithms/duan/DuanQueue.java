@@ -6,6 +6,7 @@ import java.util.TreeMap;
 
 import dk.dtu.routeplanner.core.algorithms.duan.Duan.Entry;
 
+// the block queue from the paper (lemma 3.3)
 final class DuanQueue {
     record Batch(Entry bound, List<Integer> sources) {}
 
@@ -92,6 +93,7 @@ final class DuanQueue {
     }
 
     void batchPrepend(List<Entry> values) {
+        // everything in here has to be smaller than what is already in the queue
         List<Item> pending = new ArrayList<>();
         for (Entry value : values) {
             Item old = entries[value.node()];

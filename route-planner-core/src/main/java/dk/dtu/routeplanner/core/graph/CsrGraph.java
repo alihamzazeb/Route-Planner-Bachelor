@@ -4,6 +4,7 @@ import java.util.Objects;
 
 public class CsrGraph implements Graph {
 
+    // the edges of node i are from offsets[i] to offsets[i + 1]
     private final int[] offsets;
     private final int[] targets;
     private final double[] weights;

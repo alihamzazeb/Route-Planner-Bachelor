@@ -61,12 +61,8 @@ class SeededCheckTest {
     }
 
     @Test
-    void dijkstraVersionsAgreeOnSeededPairs() {
-        checkAgainstDijkstra(new Dijkstra());
-    }
-
-    @Test
     void aStarAgreesWithDijkstraAndSettlesFewerNodes() {
+        // this also checks dijkstra point to point
         long dijkstraSettled = checkAgainstDijkstra(new Dijkstra());
         long aStarSettled = checkAgainstDijkstra(new AStar(line.smallestLimit(graph), line));
 

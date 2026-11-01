@@ -22,7 +22,7 @@ public final class RandomLandmarkSelector {
         }
 
         int[] landmarks = new int[count]; // array wit total number of landmarks
-        Set<Integer> chosen = new HashSet<>(); // to make sure that the random number is not repeated. hashset is quick (ALI skriv om det i rapporten)
+        Set<Integer> chosen = new HashSet<>(); // to make sure that the random number is not repeated. hashset is quick
         Random random = new Random(seed); 
 
         int index = 0;

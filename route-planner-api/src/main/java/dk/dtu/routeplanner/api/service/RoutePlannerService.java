@@ -115,6 +115,23 @@ public class RoutePlannerService {
         return result;
     }
 
+    public RouteResponse toRouteResponse(String algorithm, int source, int target, SearchResult result) {
+        boolean reachable = Double.isFinite(result.distance());
+        int[] path = result.path();
+
+        return new RouteResponse(
+                algorithm,
+                source,
+                target,
+                reachable,
+                reachable ? result.distance() : null,
+                path,
+                pathCoordinates(path),
+                result.settledCounter(),
+                result.relaxedCounter()
+        );
+    }
+
 
     public ComparisonResponse compareAlgorithms(int source, int target, String selectedAlgorithm) {
 
@@ -131,21 +148,7 @@ public class RoutePlannerService {
             default -> throw new IllegalArgumentException("Unknown algorithm: " + selectedAlgorithm);
         };
 
-        SearchResult result = selected.result();
-        boolean reachable = Double.isFinite(result.distance());
-        int[] path = result.path();
-
-        RouteResponse route = new RouteResponse(
-                selectedAlgorithm,
-                source,
-                target,
-                reachable,
-                reachable ? result.distance() : null,
-                path,
-                pathCoordinates(path),
-                result.settledCounter(),
-                result.relaxedCounter()
-        );
+        RouteResponse route = toRouteResponse(selectedAlgorithm, source, target, selected.result());
 
         return new ComparisonResponse(
                 source,

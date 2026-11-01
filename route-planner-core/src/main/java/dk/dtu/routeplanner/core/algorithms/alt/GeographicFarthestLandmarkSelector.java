@@ -42,6 +42,7 @@ public final class GeographicFarthestLandmarkSelector {
                 break;
             }
 
+            // pick the node that is furthest away from the landmarks we already have
             int next = -1;
             double largestNearestDistance = -1;
 

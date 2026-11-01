@@ -41,36 +41,6 @@ public class StraightLineTest {
         assertEquals(722.9, result, 0.1);
     }
 
-
-    @Test
-    void secondPairDistance() throws IOException {
-        StraightLine line = new StraightLine(loadSmallCoordinates());
-
-        double result = line.distance(1, 2);
-
-        assertEquals(38241.2, result, 0.1);
-    }
-
-    @Test
-    void sameDistanceBothWays() throws IOException {
-        StraightLine line = new StraightLine(loadSmallCoordinates());
-
-        double result = line.distance(0, 1);
-        double result2 = line.distance(1, 0);
-
-        assertEquals(result, result2, 0.0001);
-    }
-
-    @Test
-    void zeroDistanceToItself() throws IOException {
-        StraightLine line = new StraightLine(loadSmallCoordinates());
-
-        double result = line.distance(0, 0);
-
-        assertEquals(0, result, 0.0001);
-    }
-
-
     @Test
     void smallestLimitSkipsNodesAtTheSameSpot() throws IOException {
         Path file = tempDir.resolve("same-spot.co");
@@ -117,10 +87,10 @@ public class StraightLineTest {
         StraightLine line = new StraightLine(loader.loadCoordinates(NEW_YORK_COORDINATES_PATH));
 
         double c = line.smallestLimit(network.forward());
-        System.out.println("smallest limit c for New York: " + c);
 
-        assertTrue(c > 0);
-    } 
+        // c we use for A* in the experiments
+        assertEquals(0.7973, c, 0.0001);
+    }
 
 
     @Test

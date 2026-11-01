@@ -13,6 +13,7 @@ import dk.dtu.routeplanner.core.model.SearchResult;
 public class AStar implements PointToPointAlgorithm{
     private final Heuristic heuristic;
 
+    // guess = c * straight line distance
     public AStar(double c, StraightLine straightLine) {
         this((node, target) -> c * straightLine.distance(node, target));
     }

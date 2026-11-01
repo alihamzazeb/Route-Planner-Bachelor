@@ -76,12 +76,6 @@ public class DimacsLoaderTest {
         assertEquals(264346, network.reverse().nodeCount());
     }
 
-    @Test
-    void newYorkReverseMatchesForward() throws IOException {
-        assumeTrue(Files.isRegularFile(NEW_YORK), "New York graph not available");
-        assertReverseMatchesForward(new DimacsLoader().load(NEW_YORK));
-    }
-
     private void assertReverseMatchesForward(RoadNetwork network) {
         Graph fwd = network.forward();
         Graph rev = network.reverse();

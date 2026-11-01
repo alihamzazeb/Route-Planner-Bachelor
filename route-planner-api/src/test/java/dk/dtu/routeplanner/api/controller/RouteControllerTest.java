@@ -14,6 +14,10 @@ import dk.dtu.routeplanner.api.service.RoutePlannerService;
 import dk.dtu.routeplanner.core.model.SearchResult;
 
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -31,6 +35,7 @@ class RouteControllerTest {
     @BeforeEach
     void setUp() {
         when(service.nodeCount()).thenReturn(100);
+        doCallRealMethod().when(service).toRouteResponse(anyString(), anyInt(), anyInt(), any(SearchResult.class));
     }
 
     // different settled counts tell us which algorithm was called

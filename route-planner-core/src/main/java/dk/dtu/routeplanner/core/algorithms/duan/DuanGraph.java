@@ -139,6 +139,7 @@ final class DuanGraph implements Graph {
                     compactOffsets, compactTargets, maxDegree, false);
         }
 
+        // every node becomes a cycle of copies with 0 weight edges between them
         int[] firstCopy = new int[reachable + 1];
         for (int node = 0; node < reachable; node++) {
             int outgoing = compactOffsets[node + 1] - compactOffsets[node];
