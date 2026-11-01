@@ -194,6 +194,7 @@ html, body {
     gap: 14px;
 }
 
+/* hidden has to win over display: flex */
 [hidden] {
     display: none !important;
 }
@@ -404,6 +405,7 @@ html, body {
     outline-offset: 2px;
 }
 
+/* phones: sidebar on top, map below */
 @media (max-width: 700px) {
     .app {
         grid-template-columns: 1fr;

@@ -88,6 +88,15 @@ class RouteControllerTest {
                 .andExpect(jsonPath("$.message").value("Invalid target node: 100"));
     }
 
+    @Test
+    void tooLargeNodeReturnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/routes")
+                        .param("source", "3000000000")
+                        .param("target", "50"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid source node: 3000000000"));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"/api/routes", "/api/routes/compare"})
     void unknownAlgorithmReturnsBadRequest(String endpoint) throws Exception {

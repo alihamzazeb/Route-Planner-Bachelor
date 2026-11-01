@@ -42,7 +42,6 @@ data/                    DIMACS graph and coordinate files (not tracked by Git)
 - Java 21
 - Maven
 - DIMACS New York distance graph and coordinate files
-- A CARTO API key for the browser map
 
 Put the network files in `data/` at the repository root:
 
@@ -54,13 +53,13 @@ data/
 
 The corresponding file paths are configured in `route-planner-api/src/main/resources/application.properties`.
 
-For the map, create `route-planner-api/src/main/resources/static/config.local.js`:
+The map works without an API key. If you have a CARTO API key, you can add it in `route-planner-api/src/main/resources/static/config.local.js`:
 
 ```javascript
 window.CARTO_API_KEY = "YOUR_CARTO_API_KEY";
 ```
 
-This file is ignored by Git. The key is still sent to the browser, so restrict it through the provider's settings. The map also needs an internet connection to load MapLibre and the basemap.
+This file is ignored by Git. The key is still sent to the browser, so restrict it through the provider's settings. The map needs an internet connection to load MapLibre and the basemap.
 
 ## Build and run
 

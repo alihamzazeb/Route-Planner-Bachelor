@@ -1,14 +1,11 @@
 import * as maplibregl from "https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.mjs";
 
-const CARTO_KEY = window.CARTO_API_KEY;
-
-if (!CARTO_KEY) {
-    throw new Error("CARTO API key is missing");
-}
+const CARTO_KEY = window.CARTO_API_KEY; // optional, from config.local.js
+const STYLE_URL = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
 const map = new maplibregl.Map({
     container: "map",
-    style: `https://basemaps.cartocdn.com/gl/positron-gl-style/style.json?key=${encodeURIComponent(CARTO_KEY)}`,
+    style: CARTO_KEY ? `${STYLE_URL}?key=${encodeURIComponent(CARTO_KEY)}` : STYLE_URL,
     center: [-73.9855, 40.7580],
     zoom: 12
 });
@@ -57,7 +54,7 @@ function addMarker(coordinate, color) {
     markers.push(new maplibregl.Marker({ color }).setLngLat(coordinate).addTo(map));
 }
 
-// Green marker at the start, red marker at the end. A single coordinate (single-source search) only gets the start marker
+// green = start, red = end
 function drawRoute(coordinates) {
     clearRoute();
 
@@ -84,6 +81,18 @@ function drawRoute(coordinates) {
     map.fitBounds(bounds, { padding: 60, maxZoom: 15 });
 }
 
+// the map might still be loading, or not load at all
+function drawWhenReady(coordinates) {
+    const id = requestId;
+
+    mapReady.then(() => {
+        if (id === requestId) {
+            drawRoute(coordinates);
+        }
+    });
+}
+
+// distances are in 0.1 m, so /10000 gives km
 function formatDistance(distance) {
     return `${(distance / 10000).toFixed(2)} km`;
 }
@@ -114,12 +123,12 @@ function isSingleSource() {
     return searchType.value === "single-source";
 }
 
-// The algorithm dropdown of the selected search type
+// dropdown for the selected search type
 function algorithmInput() {
     return document.getElementById(`${searchType.value}-algorithm`);
 }
 
-// A response that is still on its way is ignored, because its request id is now out of date
+// old responses are ignored because the id changed
 function cancelRequest() {
     requestId++;
     setButtonsDisabled(false);
@@ -140,7 +149,7 @@ function configureSearchType() {
         element.hidden = element.dataset.searchType !== searchType.value;
     }
 
-    // a hidden input that is required would still block the form, so it is disabled as well
+    // a hidden required input still blocks the form, so we disable it
     targetInput.disabled = isSingleSource();
 }
 
@@ -150,7 +159,7 @@ function showResult(data) {
     setText("result-relaxed", formatCount(data.relaxedEdges));
 
     if (isSingleSource()) {
-        drawRoute([[data.sourceLongitude, data.sourceLatitude]]);
+        drawWhenReady([[data.sourceLongitude, data.sourceLatitude]]);
         setText("result-status", "Completed");
         setText("result-distance", formatCount(data.reachableNodes));
         setText("result-distance-unit", `of ${formatCount(data.nodeCount)} nodes`);
@@ -158,7 +167,7 @@ function showResult(data) {
         setText("result-time", formatTime(data.timeMs));
         setMessage(routeMessage, `All shortest-path distances from node ${data.source} computed. The map marks the source only.`);
     } else {
-        drawRoute(data.coordinates);
+        drawWhenReady(data.coordinates);
         setText("result-status", data.reachable ? "Reachable" : "Unreachable");
         setText("result-distance", data.reachable ? formatDistance(data.distance) : "-");
         setText("result-distance-unit", "Road distance");
@@ -198,7 +207,6 @@ function showComparison(data) {
     }
 }
 
-// The point-to-point table also has the settled-nodes bar and the distance of each algorithm
 function showRouteComparison(table, results) {
     const maxSettled = Math.max(1, ...results.map(result => result.settledNodes));
     const reachable = results.filter(result => result.reachable);
@@ -260,9 +268,6 @@ async function runSearch(compare) {
             throw new Error(data.message || "Search request failed");
         }
 
-        // the result can only be drawn once the map has loaded
-        await mapReady;
-
         if (id !== requestId) {
             return;
         }
@@ -286,7 +291,7 @@ async function runSearch(compare) {
     }
 }
 
-// any change in the form, also of the search type, makes the shown results out of date
+// any change in the form clears the old results
 routeForm.addEventListener("input", resetResults);
 searchType.addEventListener("change", configureSearchType);
 compareButton.addEventListener("click", () => runSearch(true));
@@ -308,5 +313,5 @@ document.getElementById("clear-route").addEventListener("click", () => {
     workspace.scrollTo({ top: 0, behavior: "smooth" });
 });
 
-// the browser can restore the selected search type on reload, so the page is set up from the dropdown
+// the browser can keep the search type on reload
 configureSearchType();
