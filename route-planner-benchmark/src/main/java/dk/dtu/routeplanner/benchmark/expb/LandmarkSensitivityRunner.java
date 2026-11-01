@@ -69,17 +69,15 @@ public final class LandmarkSensitivityRunner {
             );
 
             // Warm up before collecting preprocessing measurements.
-            preprocessor.preprocess(landmarks);
+            var data = preprocessor.preprocess(landmarks);
 
             double tableMiB = 2.0 * count * graph.nodeCount() * Double.BYTES / (1024.0 * 1024.0);
-
-            AStar alt = null;
 
             for (int trial = 1; trial <= TRIALS; trial++) {
 
                 long start = System.nanoTime();
 
-                var data = preprocessor.preprocess(landmarks);
+                data = preprocessor.preprocess(landmarks);
 
                 double elapsedMs = (System.nanoTime() - start) / 1000000.0;
 
@@ -91,11 +89,10 @@ public final class LandmarkSensitivityRunner {
                         elapsedMs,
                         tableMiB
                 ));
-
-                if (trial == TRIALS) {
-                    alt = new AStar(new LandmarkHeuristic(data));
-                }
             }
+
+            // the queries use the tables from the last trial
+            AStar alt = new AStar(new LandmarkHeuristic(data));
 
             long settledTotal = 0;
             long relaxedTotal = 0;

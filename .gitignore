@@ -7,8 +7,6 @@ target/
 
 .DS_Store
 
-*.gr
-*.co
 **/config.local.js
 
 /report-figures/

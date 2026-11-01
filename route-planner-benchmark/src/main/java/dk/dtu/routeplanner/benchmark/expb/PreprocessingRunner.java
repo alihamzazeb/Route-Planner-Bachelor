@@ -17,6 +17,7 @@ import dk.dtu.routeplanner.core.loader.DimacsLoader;
 
 public class PreprocessingRunner {
 
+    @SuppressWarnings("unused") // keeps the prepared objects alive
     private static volatile PreparedData keepAlive;
     private record PreparedData(
         RoadNetwork network,
