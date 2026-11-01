@@ -1,9 +1,12 @@
 
 import csv
 import json
+import math
 from pathlib import Path
+from textwrap import fill
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -11,13 +14,13 @@ RESULTS = ROOT / "benchmark-data" / "results"
 FIGURES = ROOT / "report-figures"
 
 COLORS = {
-    "dijkstra": "tab:blue",
-    "bidirectional": "tab:orange",
-    "astar": "tab:green",
-    "alt": "tab:red",
-    "duan": "tab:orange",
-    "random": "tab:blue",
-    "farthest": "tab:green"
+    "dijkstra": "#0072B2",
+    "bidirectional": "#E69F00",
+    "astar": "#009E73",
+    "alt": "#CC79A7",
+    "duan": "#E69F00",
+    "random": "#0072B2",
+    "farthest": "#009E73"
 }
 
 NAMES = {
@@ -29,12 +32,18 @@ NAMES = {
 }
 
 ORDER = ["dijkstra", "bidirectional", "astar", "alt"]
+JMH_NOTE = "Error bars: JMH 99.9% confidence intervals (2 forks, 5 measurement iterations each)."
+ROUTES_NOTE = "NY: 100 fixed routes (33 short, 33 medium, 34 long); ALT: 4 random landmarks, seed 2026."
 
 plt.rcParams.update({
     "font.size": 10,
     "axes.titlesize": 12,
     "axes.labelsize": 10,
-    "savefig.dpi": 220
+    "savefig.dpi": 220,
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+    "legend.frameon": False,
+    "pdf.fonttype": 42
 })
 
 
@@ -42,7 +51,16 @@ plt.rcParams.update({
 
 def jmh(filename):
     with (RESULTS / filename).open(encoding="utf-8") as f:
-        return json.load(f)
+        records = json.load(f)
+
+    for record in records:
+        if record["mode"] != "avgt" or record["primaryMetric"]["scoreUnit"] != "ms/op":
+            raise ValueError(f"Expected average time in ms/op in {filename}")
+        allocation = record.get("secondaryMetrics", {}).get("gc.alloc.rate.norm")
+        if allocation and allocation["scoreUnit"] != "B/op":
+            raise ValueError(f"Expected allocation in B/op in {filename}")
+
+    return records
 
 
 def csv_rows(filename):
@@ -67,21 +85,21 @@ def error(record):
     return record["primaryMetric"].get("scoreError", 0.0)
 
 
-def save(fig, experiment, filename):
+def save(fig, experiment, filename, note=""):
     folder = FIGURES / experiment
     folder.mkdir(parents=True, exist_ok=True)
 
-    for ext in ("pdf",):
-        fig.savefig(
-            folder / (filename + "." + ext),
-            bbox_inches="tight"
-        )
+    if note:
+        note = "\n".join(fill(line, width=115) for line in note.splitlines())
+        fig.text(0.02, 0.02, note, fontsize=8, color="#444444", va="bottom")
+    fig.tight_layout(rect=(0, 0.14 if note else 0, 1, 1))
+    fig.savefig(folder / (filename + ".pdf"), bbox_inches="tight")
 
     plt.close(fig)
 
 
 def new_plot(title, ylabel, xlabel=None):
-    fig, ax = plt.subplots(figsize=(8, 4.8))
+    fig, ax = plt.subplots(figsize=(8.6, 5.6))
 
     ax.set_title(title, pad=14)
     ax.set_ylabel(ylabel)
@@ -96,9 +114,10 @@ def new_plot(title, ylabel, xlabel=None):
 
 
 def bars(experiment, filename, title, labels,
-         values, ylabel, errors=None, colors=None, units=""):
+         values, ylabel, errors=None, colors=None, units="",
+         *, note="", xlabel=None, annotations=None):
 
-    fig, ax = new_plot(title, ylabel)
+    fig, ax = new_plot(title, ylabel, xlabel)
 
     palette = (
         colors if colors is not None
@@ -116,28 +135,30 @@ def bars(experiment, filename, title, labels,
         width=0.64
     )
 
-    ax.set_xticks(xs, labels)
+    ax.set_xticks(xs, [label.replace("Bidirectional Dijkstra", "Bidirectional\nDijkstra") for label in labels])
 
     ax.set_ylim(
         0,
         max(
             v + (errors[i] if errors else 0)
             for i, v in enumerate(values)
-        ) * 1.2
+        ) * (1.30 if annotations else 1.20)
     )
 
     for x, value in zip(xs, values):
+        label = f"{value:,.2f}{units}" if units else f"{value:,.0f}"
+        if annotations:
+            label += "\n" + annotations[x]
         ax.annotate(
-            f"{value:,.2f}{units}",
-            (x, value),
+            label,
+            (x, value + (errors[x] if errors else 0)),
             xytext=(0, 8),
             textcoords="offset points",
             ha="center",
             fontsize=9
         )
 
-    fig.tight_layout()
-    save(fig, experiment, filename)
+    save(fig, experiment, filename, note)
 
 
 # EXPERIMENT A: SINGLE-SOURCE
@@ -172,7 +193,9 @@ def experiment_a():
         "Average time (ms per source)",
         [error(times[x]) for x in algorithms],
         colors,
-        " ms"
+        " ms",
+        note="NY: 10 fixed sources; graph preparation excluded. Ratios compare mean query times.\n" + JMH_NOTE,
+        annotations=["Baseline", f"{score(times['duan']) / score(times['dijkstra']):.2f}x Dijkstra time"]
     )
 
     # Figure A2: Temporary memory allocation
@@ -189,8 +212,11 @@ def experiment_a():
         labels,
         memory,
         "Allocated MB per source",
+        errors=[allocation[x]["secondaryMetrics"]["gc.alloc.rate.norm"]["scoreError"] / 1e6 for x in algorithms],
         colors=colors,
-        units=" MB"
+        units=" MB",
+        annotations=["Baseline", f"{memory[1] / memory[0]:.2f}x Dijkstra allocation"],
+        note="NY: 10 fixed sources. Total allocated bytes per query, not peak heap; 1 MB = 1,000,000 bytes.\n" + JMH_NOTE
     )
 
     # Figure A3: Estimated total runtime
@@ -226,13 +252,19 @@ def experiment_a():
         color=COLORS["duan"]
     )
 
-    ax.legend()
-    fig.tight_layout()
+    ax.legend(loc="upper left")
+    ax.set_xlim(0, 100)
+    ax.set_ylim(bottom=0)
+    if prep >= 0 and score(times["duan"]) >= score(times["dijkstra"]):
+        ax.text(0.98, 0.05, f"Duan setup: {prep:.2f} ms\nNo positive crossover with these mean costs.",
+                transform=ax.transAxes, ha="right", va="bottom", fontsize=9)
 
     save(
         fig,
         "experiment-a",
-        "03_modelled_total_time"
+        "03_modelled_total_time",
+        "Model: setup cost + query count x mean query time; graph loading excluded.\n"
+        "Setup and query means come from separate JMH runs; lines are estimates, not measured sequences."
     )
 
 
@@ -255,7 +287,9 @@ def experiment_b():
         "Average time (ms per route)",
         [error(times[a]) for a in ORDER],
         [COLORS[a] for a in ORDER],
-        " ms"
+        " ms",
+        note=ROUTES_NOTE + "\n" + JMH_NOTE + " Ratios compare means.",
+        annotations=["Baseline"] + [f"{score(times['dijkstra']) / score(times[a]):.2f}x speedup" for a in ORDER[1:]]
     )
 
     # Figures B2 and B3: Search effort
@@ -303,7 +337,9 @@ def experiment_b():
             [NAMES[a] for a in ORDER],
             [means[a] for a in ORDER],
             ylabel,
-            colors=[COLORS[a] for a in ORDER]
+            colors=[COLORS[a] for a in ORDER],
+            annotations=["Baseline"] + [f"{100 * (1 - means[a] / means['dijkstra']):.1f}% fewer" for a in ORDER[1:]],
+            note=ROUTES_NOTE + "\nArithmetic means of per-route counts; percentages compare means, not per-route ratios."
         )
 
     # Figure B4: Short, medium and long routes
@@ -319,27 +355,27 @@ def experiment_b():
 
     fig, ax = new_plot(
         "Query time by route distance",
-        "Average time (ms per route)",
+        "Average time (ms per route, logarithmic scale)",
         "Route category"
     )
 
-    for a in ORDER:
+    for a, marker in zip(ORDER, ["o", "s", "^", "D"]):
 
-        values = [
-            score(
-                next(
-                    r for r in length_data
-                    if r["params"]["algorithmName"] == a
-                    and r["benchmark"].endswith("." + suffix)
-                )
+        records = [
+            next(
+                r for r in length_data
+                if r["params"]["algorithmName"] == a
+                and r["benchmark"].endswith("." + suffix)
             )
             for suffix in suffixes
         ]
 
-        ax.plot(
+        ax.errorbar(
             range(3),
-            values,
-            marker="o",
+            [score(r) for r in records],
+            yerr=[error(r) for r in records],
+            capsize=4,
+            marker=marker,
             linewidth=2,
             label=NAMES[a],
             color=COLORS[a]
@@ -348,21 +384,22 @@ def experiment_b():
     ax.set_xticks(
         range(3),
         [
-            "Short (<5 km)",
-            "Medium (5–20 km)",
-            "Long (≥20 km)"
+            "Short (<5 km)\nn = 33 routes",
+            "Medium (5-20 km)\nn = 33 routes",
+            "Long (>=20 km)\nn = 34 routes"
         ]
     )
 
     ax.set_yscale("log")
+    ax.set_yticks([0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20])
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
     ax.legend()
-
-    fig.tight_layout()
 
     save(
         fig,
         "experiment-b",
-        "04_route_distance_logscale"
+        "04_route_distance_logscale",
+        JMH_NOTE + "\nEach point averages its fixed category; overlapping intervals do not establish an ordering."
     )
 
     # Figure B5: Temporary allocation
@@ -384,8 +421,10 @@ def experiment_b():
         [NAMES[a] for a in ORDER],
         memory,
         "Allocated MB per route",
+        errors=[allocations[a]["secondaryMetrics"]["gc.alloc.rate.norm"]["scoreError"] / 1e6 for a in ORDER],
         colors=[COLORS[a] for a in ORDER],
-        units=" MB"
+        units=" MB",
+        note="NY: 100 fixed routes. Total allocated bytes per query, not peak heap; 1 MB = 1,000,000 bytes.\n" + JMH_NOTE
     )
 
     # Figure B6: Random landmark count vs query time
@@ -410,7 +449,10 @@ def experiment_b():
             error(landmark_times[str(k)])
             for k in counts
         ],
-        units=" ms"
+        colors=[COLORS["alt"]] * len(counts),
+        units=" ms",
+        xlabel="Number of landmarks",
+        note="NY: the same 100 routes; random selection, seed 2026; preparation excluded.\n" + JMH_NOTE
     )
 
     # Figure B7: Landmark preprocessing
@@ -419,6 +461,7 @@ def experiment_b():
     )
 
     prep_means = []
+    prep_trials = []
 
     for k in counts:
         values = [
@@ -430,15 +473,27 @@ def experiment_b():
         prep_means.append(
             sum(values) / len(values)
         )
+        prep_trials.append(values)
 
-    bars(
+    fig, ax = new_plot("ALT: landmark preprocessing cost", "Preprocessing time (ms)", "Number of landmarks")
+    for x, values in enumerate(prep_trials):
+        offsets = [(i - (len(values) - 1) / 2) * 0.045 for i in range(len(values))]
+        ax.scatter([x + offset for offset in offsets], values, color=COLORS["alt"],
+                   s=40, label="Individual run" if x == 0 else None)
+        ax.annotate(f"{prep_means[x]:.2f} ms", (x, max(values)), xytext=(0, 10),
+                    textcoords="offset points", ha="center", fontsize=9)
+    ax.plot(range(len(counts)), prep_means, linestyle="none", marker="_", markersize=28,
+            markeredgewidth=2, color="#222222", label="Mean")
+    ax.set_xticks(range(len(counts)), [str(k) for k in counts])
+    ax.set_xlim(-0.5, len(counts) - 0.5)
+    ax.set_ylim(0, max(max(values) for values in prep_trials) * 1.18)
+    ax.legend(loc="upper left")
+    save(
+        fig,
         "experiment-b",
         "07_random_landmarks_preprocessing",
-        "ALT: landmark preprocessing cost",
-        [str(k) for k in counts],
-        prep_means,
-        "Preprocessing time (ms)",
-        units=" ms"
+        "All 5 recorded runs per count are shown after one warmup in a single process.\n"
+        "Dots show run-to-run variation, not confidence intervals; random landmarks, seed 2026."
     )
 
     # Figures B8 and B9: Settled nodes and table memory
@@ -460,7 +515,10 @@ def experiment_b():
             float(landmark_map[k]["mean_settled"])
             for k in counts
         ],
-        "Average settled nodes per route"
+        "Average settled nodes per route",
+        colors=[COLORS["alt"]] * len(counts),
+        xlabel="Number of landmarks",
+        note="NY: the same 100 routes; random selection, seed 2026.\nArithmetic means of per-route counts; these are search-work measurements, not query times."
     )
 
     bars(
@@ -473,7 +531,10 @@ def experiment_b():
             for k in counts
         ],
         "Distance-table storage (MiB)",
-        units=" MiB"
+        colors=[COLORS["alt"]] * len(counts),
+        units=" MiB",
+        xlabel="Number of landmarks",
+        note="Payload of forward and reverse double-distance tables: 2 x landmarks x nodes x 8 bytes.\nExcludes graph storage and object headers; 1 MiB = 1,048,576 bytes."
     )
 
     # Figures B10 and B11: Random vs farthest-first
@@ -506,7 +567,7 @@ def experiment_b():
         )
 
     labels = [
-        f"{k} {m}"
+        f"{k} landmarks\n{'Random' if m == 'random' else 'Farthest-first'}"
         for m, k in configurations
     ]
 
@@ -530,7 +591,8 @@ def experiment_b():
             for m, k in configurations
         ],
         palette,
-        " ms"
+        " ms",
+        note="NY: the same 100 routes; random / geographical farthest-first selection, seed 2026.\n" + JMH_NOTE
     )
 
     bars(
@@ -544,19 +606,13 @@ def experiment_b():
         ],
         "Total setup time (ms)",
         colors=palette,
-        units=" ms"
+        units=" ms",
+        note="Mean of 5 warmed setup runs per configuration in one process; graph loading excluded.\nRaw trials were not saved for this experiment, so no uncertainty bars are inferred."
     )
 
     # Figure B12: Estimated ALT break-even
 
-    setup_data = csv_rows("NY-landmark-selection-setup.csv")
-
-    alt_setup = next(
-        float(row["total_setup_ms"])
-        for row in setup_data
-        if row["method"] == "random"
-        and int(row["landmarks"]) == 4
-    )
+    alt_setup = setups[("random", 4)]
 
 
     fig, ax = new_plot(
@@ -565,7 +621,10 @@ def experiment_b():
         "Number of point-to-point queries"
     )
 
-    queries = list(range(0, 201))
+    saving_per_query = score(times["dijkstra"]) - score(times["alt"])
+    crossover = alt_setup / saving_per_query if saving_per_query > 0 else None
+    maximum_queries = max(200, math.ceil(crossover * 2 / 50) * 50) if crossover is not None else 200
+    queries = list(range(maximum_queries + 1))
 
     dijkstra = [
         n * score(times["dijkstra"])
@@ -591,14 +650,88 @@ def experiment_b():
         color=COLORS["alt"]
     )
 
-    ax.legend()
-    fig.tight_layout()
+    if crossover is not None:
+        crossing_time = crossover * score(times["dijkstra"])
+        ax.axvline(crossover, color="#666666", linestyle="--", linewidth=1)
+        ax.scatter([crossover], [crossing_time], color="#222222", zorder=4)
+        ax.annotate(f"Estimated crossover\nabout {math.ceil(crossover)} queries",
+                    xy=(crossover, crossing_time), xytext=(0.55, 0.20), textcoords="axes fraction",
+                    arrowprops={"arrowstyle": "->", "color": "#444444"}, fontsize=10)
+    ax.set_xlim(0, maximum_queries)
+    ax.set_ylim(bottom=0)
+    ax.legend(loc="upper left")
 
     save(
         fig,
         "experiment-b",
-        "12_modelled_alt_break_even"
+        "12_modelled_alt_break_even",
+        "Model: setup + query count x mean query time; 4 random landmarks, seed 2026; graph loading excluded.\n"
+        "Uses a warmed setup mean and separate JMH query means; the crossover is an estimate."
     )
+
+    route_work_reduction(counters)
+    placement_tradeoff(placement_times, placement_setup)
+
+
+def route_work_reduction(counters):
+    by_pair = {}
+    for row in counters:
+        pair = (int(row["source"]), int(row["target"]))
+        results = by_pair.setdefault(pair, {})
+        if row["algorithm"] in results:
+            raise ValueError(f"Duplicate counter result for {pair}: {row['algorithm']}")
+        results[row["algorithm"]] = row
+    if len(by_pair) != 100 or any(set(results) != set(NAMES[a] for a in ORDER) for results in by_pair.values()):
+        raise ValueError("Expected the same 100 route pairs for all four algorithms")
+
+    fig, ax = new_plot("Search-work reduction varies across routes",
+                       "Dijkstra settlements / algorithm settlements", "Road distance (km, logarithmic scale)")
+    for algorithm, marker in zip(ORDER[1:], ["s", "^", "o"]):
+        distances = []
+        reductions = []
+        for results in by_pair.values():
+            reference = results[NAMES["dijkstra"]]
+            result = results[NAMES[algorithm]]
+            if float(result["distance"]) != float(reference["distance"]):
+                raise ValueError("Counter distances disagree for a route")
+            distances.append(float(reference["distance"]) / 10000)
+            reductions.append(int(reference["settled"]) / int(result["settled"]))
+        ax.scatter(distances, reductions, marker=marker, s=25, alpha=0.65,
+                   color=COLORS[algorithm], label=NAMES[algorithm])
+    ax.axhline(1, color="#555555", linestyle="--", linewidth=1)
+    for boundary in [5, 20]:
+        ax.axvline(boundary, color="#888888", linestyle=":", linewidth=1)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_yticks([1, 2, 5, 10, 20, 50, 100])
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}x"))
+    ax.legend(loc="upper left", fontsize=9)
+    save(fig, "experiment-b", "13_route_work_reduction",
+         "Each dot is one saved route for one algorithm (100 routes each); both axes are logarithmic.\n"
+         "Above 1x means fewer settlements than Dijkstra; dotted boundaries: 5 / 20 km. Counts, not timing speedups.")
+
+
+def placement_tradeoff(placement_times, placement_setup):
+    storage = {(row["method"], int(row["landmarks"])): float(row["table_mib"]) for row in placement_setup}
+    fig, ax = new_plot("ALT: query time versus landmark-table storage",
+                       "Average query time (ms per route)", "Distance-table payload (MiB)")
+    for method, marker in [("random", "o"), ("farthest", "s")]:
+        records = sorted((r for r in placement_times if r["params"]["selectionMethod"] == method),
+                         key=lambda r: int(r["params"]["landmarkCount"]))
+        memory = [storage[(method, int(r["params"]["landmarkCount"]))] for r in records]
+        ax.errorbar(memory, [score(r) for r in records], yerr=[error(r) for r in records],
+                    fmt=marker, capsize=4, markersize=7, color=COLORS[method],
+                    label="Random" if method == "random" else "Geographical farthest-first")
+        for mib, record in zip(memory, records):
+            offset = 14 if method == "random" else -22
+            ax.annotate(f"{record['params']['landmarkCount']} landmarks", (mib, score(record)),
+                        xytext=(10, offset), textcoords="offset points", fontsize=9)
+    ax.set_xlim(12, max(storage.values()) * 1.30)
+    ax.set_ylim(bottom=0)
+    ax.legend(loc="upper right", fontsize=9)
+    save(fig, "experiment-b", "14_landmark_time_storage_tradeoff",
+         "NY: the same 100 routes and seed 2026; lower time and lower payload are preferable.\n"
+         "Payload excludes graph/object overhead; overlapping CIs do not establish equivalence. " + JMH_NOTE)
 
 
 # both experiments
@@ -607,5 +740,5 @@ if __name__ == "__main__":
     experiment_a()
     experiment_b()
 
-    print(f"Created 15 figures in {FIGURES}")
-    print("Each figure is saved as PDF and PNG.")
+    print(f"Created 17 figures in {FIGURES}")
+    print("Each figure is saved as PDF.")
