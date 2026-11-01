@@ -613,23 +613,31 @@ def experiment_b():
     # Figure B12: Estimated ALT break-even
 
     alt_setup = setups[("random", 4)]
-
+    preprocessing = csv_rows("NY-preprocessing.csv")
+    astar_setup = sum(float(r["astar_setup_ms"]) for r in preprocessing) / len(preprocessing)
+    baseline_setups = {"dijkstra": 0.0, "bidirectional": 0.0, "astar": astar_setup}
 
     fig, ax = new_plot(
-        "Estimated cumulative runtime: ALT vs Dijkstra",
+        "Estimated cumulative runtime: ALT vs query algorithms",
         "Estimated total time (ms)",
         "Number of point-to-point queries"
     )
 
-    saving_per_query = score(times["dijkstra"]) - score(times["alt"])
-    crossover = alt_setup / saving_per_query if saving_per_query > 0 else None
-    maximum_queries = max(200, math.ceil(crossover * 2 / 50) * 50) if crossover is not None else 200
+    crossovers = {}
+    for algorithm in ORDER[:-1]:
+        saving_per_query = score(times[algorithm]) - score(times["alt"])
+        if saving_per_query > 0:
+            crossovers[algorithm] = (alt_setup - baseline_setups[algorithm]) / saving_per_query
+    maximum_queries = max(200, math.ceil(max(crossovers.values(), default=0) * 1.25 / 50) * 50)
     queries = list(range(maximum_queries + 1))
 
-    dijkstra = [
-        n * score(times["dijkstra"])
-        for n in queries
-    ]
+    for algorithm in ORDER[:-1]:
+        ax.plot(
+            queries,
+            [baseline_setups[algorithm] + n * score(times[algorithm]) for n in queries],
+            label=NAMES[algorithm],
+            color=COLORS[algorithm]
+        )
 
     alt = [
         alt_setup + n * score(times["alt"])
@@ -638,25 +646,18 @@ def experiment_b():
 
     ax.plot(
         queries,
-        dijkstra,
-        label="Dijkstra",
-        color=COLORS["dijkstra"]
-    )
-
-    ax.plot(
-        queries,
         alt,
         label="ALT (4 random landmarks)",
         color=COLORS["alt"]
     )
 
-    if crossover is not None:
-        crossing_time = crossover * score(times["dijkstra"])
-        ax.axvline(crossover, color="#666666", linestyle="--", linewidth=1)
-        ax.scatter([crossover], [crossing_time], color="#222222", zorder=4)
-        ax.annotate(f"Estimated crossover\nabout {math.ceil(crossover)} queries",
-                    xy=(crossover, crossing_time), xytext=(0.55, 0.20), textcoords="axes fraction",
-                    arrowprops={"arrowstyle": "->", "color": "#444444"}, fontsize=10)
+    for algorithm, crossover in crossovers.items():
+        crossing_time = baseline_setups[algorithm] + crossover * score(times[algorithm])
+        ax.vlines(crossover, 0, crossing_time, color=COLORS[algorithm], linestyle="--", linewidth=1)
+        ax.scatter([crossover], [crossing_time], color=COLORS[algorithm], zorder=4)
+        ax.annotate(f"~{math.ceil(crossover)} queries",
+                    xy=(crossover, crossing_time), xytext=(8, -40), textcoords="offset points",
+                    arrowprops={"arrowstyle": "->", "color": COLORS[algorithm]}, fontsize=9)
     ax.set_xlim(0, maximum_queries)
     ax.set_ylim(bottom=0)
     ax.legend(loc="upper left")
@@ -665,8 +666,9 @@ def experiment_b():
         fig,
         "experiment-b",
         "12_modelled_alt_break_even",
-        "Model: setup + query count x mean query time; 4 random landmarks, seed 2026; graph loading excluded.\n"
-        "Uses a warmed setup mean and separate JMH query means; the crossover is an estimate."
+        f"Model: setup + query count x mean query time. A* setup: {astar_setup:.2f} ms; ALT setup: {alt_setup:.2f} ms.\n"
+        "Graph and coordinate-file loading excluded; ALT: 4 random landmarks, seed 2026.\n"
+        "Setup means come from separate runs; markers show estimated crossovers, not measured query sequences."
     )
 
     route_work_reduction(counters)
