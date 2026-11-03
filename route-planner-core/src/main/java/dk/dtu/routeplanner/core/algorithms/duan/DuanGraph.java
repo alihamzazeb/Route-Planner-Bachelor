@@ -1,5 +1,6 @@
 package dk.dtu.routeplanner.core.algorithms.duan;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 
 import dk.dtu.routeplanner.core.graph.Graph;
@@ -13,6 +14,7 @@ final class DuanGraph implements Graph {
     private final int[] offsets;
     private final int[] targets;
     private final double[] weights;
+    private final BigDecimal[] exactWeights;
     final int[] originalToInternal;
     final int[] internalToOriginal;
     final int source;
@@ -24,6 +26,7 @@ final class DuanGraph implements Graph {
         this.offsets = offsets;
         this.targets = targets;
         this.weights = weights;
+        this.exactWeights = arithmeticProfile(weights, offsets.length - 1);
         this.originalToInternal = originalToInternal;
         this.internalToOriginal = internalToOriginal;
         this.source = source;
@@ -50,11 +53,7 @@ final class DuanGraph implements Graph {
         for (int head = 0; head < reachable; head++) {
             int node = originals[head];
             for (int edge = graph.edgeStart(node); edge < graph.edgeEnd(node); edge++) {
-                int target = graph.edgeTarget(edge);
-                double weight = graph.edgeWeight(edge);
-                if (target < 0 || target >= n || !Double.isFinite(weight) || weight < 0) {
-                    throw new IllegalArgumentException("Duan needs valid targets and finite, nonnegative weights");
-                }
+                int target = validateEdge(graph, edge, n);
                 if (mapping[target] == -1) {
                     mapping[target] = reachable;
                     originals[reachable++] = target;
@@ -73,14 +72,41 @@ final class DuanGraph implements Graph {
             mapping[node] = node;
             originals[node] = node;
             for (int edge = graph.edgeStart(node); edge < graph.edgeEnd(node); edge++) {
-                int target = graph.edgeTarget(edge);
-                double weight = graph.edgeWeight(edge);
-                if (target < 0 || target >= n || !Double.isFinite(weight) || weight < 0) {
-                    throw new IllegalArgumentException("Duan needs valid targets and finite, nonnegative weights");
-                }
+                validateEdge(graph, edge, n);
             }
         }
         return build(graph, mapping, originals, n, -1, mode);
+    }
+
+    private static int validateEdge(Graph graph, int edge, int nodeCount) {
+        int target = graph.edgeTarget(edge);
+        double weight = graph.edgeWeight(edge);
+        if (target < 0 || target >= nodeCount || !Double.isFinite(weight) || weight < 0) {
+            throw new IllegalArgumentException("Duan needs valid targets and finite, nonnegative weights");
+        }
+        return target;
+    }
+
+    private static BigDecimal[] arithmeticProfile(double[] weights, int nodeCount) {
+        // A simple path plus one relaxed edge has at most nodeCount edges. Keep
+        // doubles only when all such integer sums are exactly representable.
+        long integerLimit = (1L << 53) / Math.max(1, nodeCount);
+        boolean exactDoubleSums = true;
+        for (double weight : weights) {
+            if (weight != Math.rint(weight) || weight > integerLimit) {
+                exactDoubleSums = false;
+                break;
+            }
+        }
+        if (exactDoubleSums) {
+            return null;
+        }
+        BigDecimal[] exactWeights = new BigDecimal[weights.length];
+        for (int edge = 0; edge < weights.length; edge++) {
+            // Preserve the supplied binary double value, not its rounded decimal spelling.
+            exactWeights[edge] = weights[edge] == 0 ? BigDecimal.ZERO : new BigDecimal(weights[edge]);
+        }
+        return exactWeights;
     }
 
     private static DuanGraph build(Graph graph, int[] mapping, int[] originals,
@@ -215,6 +241,14 @@ final class DuanGraph implements Graph {
 
     int compactEdgeCount() {
         return compactTargets.length;
+    }
+
+    boolean usesExactArithmetic() {
+        return exactWeights != null;
+    }
+
+    BigDecimal exactEdgeWeight(int edge) {
+        return exactWeights[edge];
     }
 
     @Override

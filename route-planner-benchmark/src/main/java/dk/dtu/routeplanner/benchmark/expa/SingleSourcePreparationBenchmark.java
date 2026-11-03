@@ -27,9 +27,7 @@ public class SingleSourcePreparationBenchmark {
 
     @Setup(Level.Trial)
     public void setup() throws IOException {
-        graph = new DimacsLoader()
-                .load(Path.of("data/USA-road-d.NY.gr"))
-                .forward();
+        graph = new DimacsLoader().load(Path.of("data/USA-road-d.NY.gr")).forward();
     }
 
     @Benchmark

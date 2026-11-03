@@ -1,5 +1,6 @@
 package dk.dtu.routeplanner.core.algorithms.duan;
 
+import java.math.BigDecimal;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,6 +14,10 @@ import dk.dtu.routeplanner.core.graph.Graph;
 import dk.dtu.routeplanner.core.model.SearchResult;
 import dk.dtu.routeplanner.core.model.SingleSourceResult;
 
+/**
+ * BMSSP from Duan et al. (Algorithms 1–3). Path comparisons use exact sums of
+ * the supplied binary weights; results are rounded to double only for the API.
+ */
 public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
 
     public enum DegreeMode {
@@ -87,14 +92,23 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
         return new Search(prepared, prepared.source, prepared.reachableCount, prepared.nodeCount());
     }
 
-    record Entry(int node, double dist, int hops) implements Comparable<Entry> {
-        @Override
-        public int compareTo(Entry other) {
-            return compare(dist, hops, node, other);
+    record Entry(int node, double dist, int hops, BigDecimal exactDist) implements Comparable<Entry> {
+        Entry(int node, double dist, int hops) {
+            this(node, dist, hops, null);
         }
 
-        static int compare(double dist, int hops, int node, Entry other) {
-            int comparison = Double.compare(dist, other.dist);
+        @Override
+        public int compareTo(Entry other) {
+            int comparison;
+            if (exactDist == null && other.exactDist == null) {
+                comparison = Double.compare(dist, other.dist);
+            } else if (exactDist == null && dist == Double.POSITIVE_INFINITY) {
+                comparison = 1;
+            } else if (other.exactDist == null && other.dist == Double.POSITIVE_INFINITY) {
+                comparison = -1;
+            } else {
+                comparison = exactValue().compareTo(other.exactValue());
+            }
             if (comparison == 0) {
                 comparison = Integer.compare(hops, other.hops);
             }
@@ -102,6 +116,10 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
                 comparison = Integer.compare(node, other.node);
             }
             return comparison;
+        }
+
+        private BigDecimal exactValue() {
+            return exactDist == null ? new BigDecimal(dist) : exactDist;
         }
     }
 
@@ -111,13 +129,18 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
     private record BoundedResult(Entry bound, List<Integer> completed) {}
     private record PivotResult(List<Integer> pivots, List<Integer> visited) {}
 
+    static int parameterT(int n) {
+        double log = Math.log(Math.max(2, n)) / Math.log(2);
+        // cbrt avoids pow(8, 2/3) rounding below the exact boundary 4.
+        return Math.max(1, (int) Math.cbrt(log * log));
+    }
+
     private static class Search {
         private final DuanGraph graph;
         private final int source;
         private final int reachableOriginalNodes;
         private final int reachableInternalNodes;
-        private final double[] dist;
-        private final int[] hops;
+        private final Entry[] labels;
         private final int[] prev;
         private final int[] prevEdge;
         private final int[] children;
@@ -126,6 +149,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
         private final int t;
         private final int levels;
         private final Workspace[] workspaces;
+        private VertexSet baseCompleted;
         private long relaxedCounter;
 
         Search(DuanGraph graph, int source, int reachableOriginalNodes, int reachableInternalNodes) {
@@ -134,24 +158,21 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             this.reachableOriginalNodes = reachableOriginalNodes;
             this.reachableInternalNodes = reachableInternalNodes;
             int n = graph.nodeCount();
-            dist = new double[n];
-            hops = new int[n];
+            labels = new Entry[n];
             prev = new int[n];
             prevEdge = new int[n];
             children = new int[n];
             subtreeSize = new int[n];
-            Arrays.fill(dist, Double.POSITIVE_INFINITY);
-            Arrays.fill(hops, Integer.MAX_VALUE);
             Arrays.fill(prev, -1);
-            Arrays.fill(prevEdge, -1);
-            dist[source] = 0;
-            hops[source] = 0;
+            labels[source] = new Entry(source, 0, 0,
+                    graph.usesExactArithmetic() ? BigDecimal.ZERO : null);
 
             // k, t and levels like in the paper
             double log = Math.log(Math.max(2, n)) / Math.log(2);
             k = Math.max(1, (int) Math.cbrt(log));
-            t = Math.max(1, (int) Math.pow(log, 2.0 / 3.0));
-            levels = (int) Math.ceil(log / t);
+            t = parameterT(n);
+            int ceilLog = 32 - Integer.numberOfLeadingZeros(Math.max(2, n) - 1);
+            levels = (ceilLog + t - 1) / t;
             workspaces = new Workspace[levels + 1];
         }
 
@@ -161,12 +182,13 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
                 throw new IllegalStateException("Top-level BMSSP did not finish");
             }
             double[] originalDistances = new double[graph.originalToInternal.length];
-            Arrays.fill(originalDistances, Double.POSITIVE_INFINITY);
             for (int node = 0; node < originalDistances.length; node++) {
                 int internal = graph.originalToInternal[node];
-                if (internal >= 0) {
-                    originalDistances[node] = dist[internal];
+                Entry value = internal < 0 ? INFINITY : entry(internal);
+                if (value != INFINITY && !Double.isFinite(value.dist())) {
+                    throw new ArithmeticException("Shortest distance exceeds the finite double range");
                 }
+                originalDistances[node] = value.dist();
             }
             return new SingleSourceResult(reachableOriginalNodes,
                     Math.toIntExact(relaxedCounter), originalDistances);
@@ -174,17 +196,25 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
 
         private int[] pathTo(int target) {
             int internal = graph.originalToInternal[target];
-            if (internal < 0 || !Double.isFinite(dist[internal])) {
+            if (internal < 0 || entry(internal) == INFINITY) {
                 return new int[0];
             }
-            ArrayDeque<Integer> path = new ArrayDeque<>();
+            List<Integer> path = new ArrayList<>();
+            int[] position = new int[graph.originalToInternal.length];
+            Arrays.fill(position, -1);
             for (int remaining = graph.nodeCount(); remaining > 0 && internal >= 0; remaining--) {
                 int original = graph.internalToOriginal[internal];
-                if (path.isEmpty() || path.getFirst() != original) {
-                    path.addFirst(original);
+                // A transformed path can project to a zero-cost cycle. Erase it.
+                if (position[original] >= 0) {
+                    while (path.size() > position[original] + 1) {
+                        position[path.removeLast()] = -1;
+                    }
+                } else {
+                    position[original] = path.size();
+                    path.add(original);
                 }
                 if (internal == source) {
-                    return path.stream().mapToInt(Integer::intValue).toArray();
+                    return path.reversed().stream().mapToInt(Integer::intValue).toArray();
                 }
                 internal = prev[internal];
             }
@@ -200,17 +230,17 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             workspace.visited.clear();
             workspace.frontier.clear();
             workspace.next.clear();
-            workspace.prepend.clear();
             return workspace;
         }
 
         private BoundedResult bmssp(int level, Entry bound, List<Integer> sources) {
-            Workspace workspace = workspace(level);
-            // level 0 is the base case
             if (level == 0) {
-                return baseCase(bound, sources, workspace.completed);
+                if (baseCompleted == null) baseCompleted = new VertexSet(graph.nodeCount());
+                baseCompleted.clear();
+                return baseCase(bound, sources, baseCompleted);
             }
 
+            Workspace workspace = workspace(level);
             PivotResult found = findPivots(bound, sources, workspace);
             int batchSize = (int) (1L << ((level - 1) * t));
             DuanQueue queue = new DuanQueue(batchSize, bound, workspace.queueEntries);
@@ -253,11 +283,11 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
                         prepend.add(node);
                     }
                 }
-                List<Entry> records = new ArrayList<>(prepend.size());
-                for (int node : prepend.values) {
-                    records.add(entry(node));
+                if (prepend.size() > 0) {
+                    List<Entry> records = new ArrayList<>(prepend.size());
+                    for (int node : prepend.values) records.add(entry(node));
+                    queue.batchPrepend(records);
                 }
-                queue.batchPrepend(records);
             }
 
             if (queue.isEmpty()) {
@@ -279,7 +309,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             visited.addAll(sources);
             frontier.addAll(sources);
             // relax k rounds from the sources, like bellman-ford
-            for (int step = 0; step < k; step++) {
+            for (int step = 0; step < k && frontier.size() > 0; step++) {
                 next.clear();
                 for (int node : frontier.values) {
                     for (int edge = graph.edgeStart(node); edge < graph.edgeEnd(node); edge++) {
@@ -341,8 +371,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             // the prev edge only counts if it still matches the distances
             int parent = prev[node];
             return parent >= 0 && visited.contains(parent)
-                    && hops[parent] + 1 == hops[node]
-                    && dist[parent] + graph.edgeWeight(prevEdge[node]) == dist[node];
+                    && extend(parent, prevEdge[node]).compareTo(entry(node)) == 0;
         }
 
         private BoundedResult baseCase(Entry bound, List<Integer> sources, VertexSet completed) {
@@ -381,31 +410,30 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
         }
 
         private Entry entry(int node) {
-            return new Entry(node, dist[node], hops[node]);
+            return labels[node] == null ? INFINITY : labels[node];
+        }
+
+        private Entry extend(int node, int edge) {
+            Entry parent = entry(node);
+            BigDecimal exact = parent.exactDist() == null ? null
+                    : parent.exactDist().add(graph.exactEdgeWeight(edge));
+            double distance = exact == null ? parent.dist() + graph.edgeWeight(edge) : exact.doubleValue();
+            return new Entry(graph.edgeTarget(edge), distance, parent.hops() + 1, exact);
         }
 
         private boolean relax(int node, int edge, Entry bound) {
             relaxedCounter++;
             int neighbour = graph.edgeTarget(edge);
-            double weight = graph.edgeWeight(edge);
-            double newDist = dist[node] + weight;
-            if (!Double.isFinite(newDist)) {
-                throw new ArithmeticException("Path distance exceeds the finite double range");
-            }
-            int newHops = hops[node] + 1;
-            if (Entry.compare(newDist, newHops, neighbour, bound) >= 0) {
+            Entry candidate = extend(node, edge);
+            if (candidate.compareTo(bound) >= 0) {
                 return false;
             }
-            int comparison = Double.compare(newDist, dist[neighbour]);
-            if (comparison == 0) {
-                comparison = Integer.compare(newHops, hops[neighbour]);
-            }
-            // on a tie the smaller node wins, and the same node can relax again
+            int comparison = candidate.compareTo(entry(neighbour));
+            // Equality is required to reuse lower-level relaxations (Remark 3.4).
             if (comparison > 0 || (comparison == 0 && node > prev[neighbour])) {
                 return false;
             }
-            dist[neighbour] = newDist;
-            hops[neighbour] = newHops;
+            labels[neighbour] = candidate;
             prev[neighbour] = node;
             prevEdge[neighbour] = edge;
             return true;

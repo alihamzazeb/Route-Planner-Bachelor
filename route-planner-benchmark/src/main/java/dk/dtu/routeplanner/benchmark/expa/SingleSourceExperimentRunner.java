@@ -15,41 +15,28 @@ import dk.dtu.routeplanner.core.model.SingleSourceResult;
 
 public final class SingleSourceExperimentRunner {
 
-    private SingleSourceExperimentRunner() {
-    }
+    private SingleSourceExperimentRunner() {}
 
     public static void main(String[] args) throws Exception {
 
-        Graph graph = new DimacsLoader()
-                .load(Path.of("data/USA-road-d.NY.gr"))
-                .forward();
+        Graph graph = new DimacsLoader().load(Path.of("data/USA-road-d.NY.gr")).forward();
 
-        int[] sources = SingleSourceWorkload.read(
-                SingleSourceWorkload.NY_SOURCES,
-                graph.nodeCount()
-        );
+        int[] sources = SingleSourceWorkload.read(SingleSourceWorkload.NY_SOURCES, graph.nodeCount());
 
         Dijkstra dijkstra = new Dijkstra();
 
-        Duan duan = new Duan(
-                graph,
-                Duan.DegreeMode.BOUNDED
-        );
+        Duan duan = new Duan(graph, Duan.DegreeMode.BOUNDED);
 
-        System.out.println(
-                "Duan preparation: " + duan.graphInfo()
-        );
+        System.out.println("Duan preparation: " + duan.graphInfo());
 
         List<String> rows = new ArrayList<>();
         rows.add("source,reachable,unreachable,checked_nodes");
 
         for (int source : sources) {
 
-            SingleSourceResult expected =
-                    dijkstra.computeShortestPaths(graph, source);
+            SingleSourceResult expected = dijkstra.computeShortestPaths(graph, source);
 
-            SingleSourceResult actual =
-                    duan.computeShortestPaths(graph, source);
+            SingleSourceResult actual =  duan.computeShortestPaths(graph, source);
 
             int reachable = 0;
 
@@ -58,10 +45,7 @@ public final class SingleSourceExperimentRunner {
                 double a = expected.distance(node);
                 double b = actual.distance(node);
 
-                if (Double.isNaN(a)
-                        || Double.isNaN(b)
-                        || Double.compare(a, b) != 0) {
-
+                if (Double.isNaN(a) || Double.isNaN(b) || Double.compare(a, b) != 0) {
                     throw new IllegalStateException(
                             "Distance mismatch: source=" + source
                                     + ", node=" + node
@@ -75,8 +59,7 @@ public final class SingleSourceExperimentRunner {
                 }
             }
 
-            if (expected.settledCounter() != reachable
-                    || actual.settledCounter() != reachable) {
+            if (expected.settledCounter() != reachable || actual.settledCounter() != reachable) {
 
                 throw new IllegalStateException(
                         "Reachability count mismatch for source " + source
@@ -97,18 +80,12 @@ public final class SingleSourceExperimentRunner {
             );
         }
 
-        Path output = Path.of(
-                "benchmark-data/results/NY-single-source-validation.csv"
-        );
+        Path output = Path.of("benchmark-data/results/NY-single-source-validation.csv");
 
         Files.createDirectories(output.getParent());
         Files.write(output, rows, StandardCharsets.UTF_8);
 
-        System.out.println(
-                "All " + sources.length
-                        + " complete distance vectors match exactly."
-        );
-
+        System.out.println("All " + sources.length + " complete distance vectors match exactly.");
         System.out.println("Validation saved to " + output);
     }
 }

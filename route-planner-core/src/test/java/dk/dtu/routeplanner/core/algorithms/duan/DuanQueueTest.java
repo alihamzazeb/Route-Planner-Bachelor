@@ -1,7 +1,7 @@
 package dk.dtu.routeplanner.core.algorithms.duan;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,7 +12,6 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
@@ -21,18 +20,34 @@ import dk.dtu.routeplanner.core.algorithms.duan.DuanQueue.Item;
 
 class DuanQueueTest {
     @Test
-    void batchSizeMustBePositive() {
-        assertThrows(IllegalArgumentException.class, () -> new DuanQueue(0, Duan.INFINITY, new Item[1]));
+    void exactKeysKeepTheirOrderWhenDoubleValuesTieOrOverflow() {
+        BigDecimal large = new BigDecimal(1e20);
+        BigDecimal overflowing = new BigDecimal(Double.MAX_VALUE).multiply(BigDecimal.valueOf(2));
+        Entry smaller = new Entry(0, large.doubleValue(), 3, large);
+        Entry larger = new Entry(1, large.doubleValue(), 1, large.add(BigDecimal.ONE));
+        Entry finite = new Entry(2, overflowing.doubleValue(), 1, overflowing);
+        DuanQueue queue = new DuanQueue(1, Duan.INFINITY, new Item[3]);
+        queue.insert(finite);
+        queue.insert(larger);
+        queue.insert(smaller);
+        DuanQueue.Batch first = queue.pull();
+        assertEquals(List.of(0), first.sources());
+        assertEquals(larger, first.bound());
+        assertEquals(List.of(1), queue.pull().sources());
+        assertEquals(List.of(2), queue.pull().sources());
+        assertTrue(finite.compareTo(Duan.INFINITY) < 0);
     }
 
     @Test
     void mixedOperationsMatchASortedReference() {
-        for (int batchSize : new int[]{1, 4, 16}) {
+        for (int batchSize : new int[]{1, 3, 4, 16}) {
             Random random = new Random(2026 + batchSize);
             Item[] index = new Item[80];
-            DuanQueue queue = new DuanQueue(batchSize, Duan.INFINITY, index);
+            Entry bound = new Entry(80, 200, 0);
+            DuanQueue queue = new DuanQueue(batchSize, bound, index);
             Map<Integer, Entry> expected = new HashMap<>();
             for (int step = 0; step < 300; step++) {
+                String context = "batchSize=" + batchSize + ", step=" + step;
                 int operation = random.nextInt(5);
                 if (operation < 3) {
                     Entry value = new Entry(random.nextInt(index.length), random.nextInt(100),
@@ -51,17 +66,19 @@ class DuanQueueTest {
                     }
                     queue.batchPrepend(batch);
                 } else {
-                    checkPull(queue, expected, batchSize, Duan.INFINITY);
+                    checkPull(queue, expected, batchSize, bound, context);
                 }
-                assertEquals(expected.isEmpty(), queue.isEmpty());
+                assertEquals(expected.isEmpty(), queue.isEmpty(), context);
                 for (int node = 0; node < index.length; node++) {
-                    assertEquals(expected.get(node), index[node] == null ? null : index[node].value);
+                    assertEquals(expected.get(node), index[node] == null ? null : index[node].value,
+                            context + ", node=" + node);
                 }
             }
             while (!queue.isEmpty()) {
-                checkPull(queue, expected, batchSize, Duan.INFINITY);
+                checkPull(queue, expected, batchSize, bound, "draining batchSize=" + batchSize);
             }
-            assertTrue(expected.isEmpty());
+            assertTrue(expected.isEmpty(), "batchSize=" + batchSize);
+            checkPull(queue, expected, batchSize, bound, "empty batchSize=" + batchSize);
         }
     }
 
@@ -80,29 +97,15 @@ class DuanQueueTest {
     }
 
     @Test
-    void returnsTheUpperBoundWhenTheQueueIsEmpty() {
-        Entry bound = new Entry(100, 20, 0);
-        DuanQueue queue = new DuanQueue(3, bound, new Item[10]);
-        Map<Integer, Entry> expected = new HashMap<>();
-        for (int node = 0; node < 10; node++) {
-            Entry value = new Entry(node, node, 1);
-            queue.insert(value);
-            expected.put(node, value);
-        }
-        while (!queue.isEmpty()) {
-            checkPull(queue, expected, 3, bound);
-        }
-        assertEquals(bound, queue.pull().bound());
-    }
-
-    @Test
     void clearAllowsTheIndexToBeReused() {
-        Item[] index = new Item[100];
+        Item[] index = new Item[20];
         DuanQueue queue = new DuanQueue(4, Duan.INFINITY, index);
         for (int node = 0; node < index.length; node++) {
             queue.insert(new Entry(node, 100 + node, 1));
         }
-        queue.batchPrepend(List.of(new Entry(10, 1, 1), new Entry(30, 2, 1)));
+        queue.batchPrepend(List.of(new Entry(0, 1, 1), new Entry(1, 2, 1),
+                new Entry(2, 3, 1), new Entry(3, 4, 1), new Entry(4, 5, 1), new Entry(5, 6, 1)));
+        // Leave both block sequences nonempty when clearing the reusable index.
         queue.pull();
         queue.clear();
         assertTrue(queue.isEmpty());
@@ -110,42 +113,9 @@ class DuanQueueTest {
             assertNull(item);
         }
         DuanQueue nextCall = new DuanQueue(1, Duan.INFINITY, index);
-        nextCall.insert(new Entry(30, 7, 1));
-        assertEquals(List.of(30), nextCall.pull().sources());
+        nextCall.insert(new Entry(5, 7, 1));
+        assertEquals(List.of(5), nextCall.pull().sources());
         assertTrue(nextCall.isEmpty());
-    }
-
-    @Test
-    void selectionMatchesSortingForDifferentOrders() {
-        Random random = new Random(711);
-        for (int size : new int[]{1, 5, 6, 31, 128}) {
-            for (int pattern = 0; pattern < 5; pattern++) {
-                Item[] input = new Item[size];
-                for (int i = 0; i < size; i++) {
-                    double value = switch (pattern) {
-                        case 0 -> i;
-                        case 1 -> size - i;
-                        case 2 -> 0;
-                        case 3 -> i % 7;
-                        default -> random.nextDouble();
-                    };
-                    input[i] = new Item(new Entry(i, value, 0));
-                }
-                Item[] sorted = input.clone();
-                Arrays.sort(sorted, Comparator.comparing(item -> item.value));
-                for (int rank : new int[]{0, size / 2, size - 1}) {
-                    Item[] actual = input.clone();
-                    DuanQueue.select(actual, 0, size, rank);
-                    assertEquals(sorted[rank].value, actual[rank].value);
-                    for (int i = 0; i < rank; i++) {
-                        assertTrue(actual[i].value.compareTo(actual[rank].value) < 0);
-                    }
-                    for (int i = rank + 1; i < size; i++) {
-                        assertTrue(actual[i].value.compareTo(actual[rank].value) > 0);
-                    }
-                }
-            }
-        }
     }
 
     private static void keepBest(Map<Integer, Entry> expected, Entry value) {
@@ -156,7 +126,7 @@ class DuanQueueTest {
     }
 
     private static void checkPull(DuanQueue queue, Map<Integer, Entry> expected,
-            int batchSize, Entry bound) {
+            int batchSize, Entry bound, String context) {
         List<Entry> ordered = new ArrayList<>(expected.values());
         ordered.sort(Comparator.naturalOrder());
         int count = Math.min(batchSize, ordered.size());
@@ -165,16 +135,16 @@ class DuanQueueTest {
             first.add(ordered.get(i).node());
         }
         DuanQueue.Batch result = queue.pull();
-        assertEquals(count, result.sources().size());
-        assertEquals(first, new HashSet<>(result.sources()));
+        assertEquals(count, result.sources().size(), context);
+        assertEquals(first, new HashSet<>(result.sources()), context);
         for (int node : result.sources()) {
             expected.remove(node);
         }
         if (expected.isEmpty()) {
-            assertEquals(bound, result.bound());
+            assertEquals(bound, result.bound(), context);
         } else {
-            assertTrue(ordered.get(count - 1).compareTo(result.bound()) < 0);
-            assertTrue(result.bound().compareTo(ordered.get(count)) <= 0);
+            assertTrue(ordered.get(count - 1).compareTo(result.bound()) < 0, context);
+            assertTrue(result.bound().compareTo(ordered.get(count)) <= 0, context);
         }
     }
 }

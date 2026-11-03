@@ -29,8 +29,8 @@ public final class BalancedWorkloadGenerator {
 
     private static final Path WORKLOAD_DIR = Path.of("benchmark-data/workloads");
 
+    // definition of the short,medium, long distances
     private enum Group {
-
         SHORT("short", 33, 0, 5000),
         MEDIUM("medium", 33, 5000, 20000),
         LONG("long", 34, 20000, Double.POSITIVE_INFINITY);
@@ -91,25 +91,29 @@ public final class BalancedWorkloadGenerator {
 
                 attempts++;
 
+                // making a pair
                 int source = random.nextInt(graph.nodeCount());
                 int target = random.nextInt(graph.nodeCount());
 
+                // make sure source and target are different and not in usedpairs
                 if (source == target || usedPairs.contains(pairId(source, target))) {
                     continue;
                 }
 
-                // First use straight-line distance to filter candidates.
+                // use straightline function to filter out possible candidates. and covnert to meter
                 double straightMetres = straightLine.distance(source, target) * METRES_PER_COORDINATE_UNIT;
 
+                //reject the impossible pair. like they are not the required distance
                 if (!group.plausible(straightMetres)) {
                     continue;
                 }
 
-                // Dijkstra determines the actual shortest road distance.
+                // we use dijsktra to find the actual distance. becuase straightline is just a lower bound
                 double roadWeight = dijkstra.findShortestPath(graph, source, target).distance();
 
                 double roadMetres = roadWeight / UNITS_PER_METRE;
 
+                // decide if we keep the pair or not
                 if (!Double.isFinite(roadMetres) || !group.contains(roadMetres)) {
                     continue;
                 }
@@ -122,13 +126,10 @@ public final class BalancedWorkloadGenerator {
             }
 
             if (routes.size() != group.count) {
-                throw new IllegalStateException(
-                        "Found only " + routes.size() + " "
-                                + group.label + " routes after "
-                                + attempts + " attempts"
-                );
+                throw new IllegalStateException("Found only " + routes.size() + " " + group.label + " routes after " + attempts + " attempts");
             }
 
+            // organize the selected routes, saves them into CSV files
             int[][] categoryPairs = new int[routes.size()][2];
 
             double min = Double.POSITIVE_INFINITY;
