@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
 
+import static dk.dtu.routeplanner.core.algorithms.PathAssertions.assertValidPath;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -84,10 +85,15 @@ class ALTTest {
     }
 
     @Test
-    void geographicSelectionPicksTheFarthestNodes() {
-        int[] landmarks = new GeographicFarthestLandmarkSelector()
-                .select(fiveNodes(), nodesOnALine(), 3, 42L);
-        assertArrayEquals(new int[]{0, 4, 3}, landmarks);
+    void geographicSelectionPicksFarthestNodesWithoutRepeatingAnyNode() {
+        GeographicFarthestLandmarkSelector selector = new GeographicFarthestLandmarkSelector();
+        int[] firstThree = selector.select(fiveNodes(), nodesOnALine(), 3, 42L);
+        assertArrayEquals(new int[]{0, 4, 3}, firstThree);
+
+        int[] landmarks = selector.select(fiveNodes(), nodesOnALine(), 5, 42L);
+        assertArrayEquals(firstThree, Arrays.copyOf(landmarks, 3));
+        Arrays.sort(landmarks);
+        assertArrayEquals(new int[]{0, 1, 2, 3, 4}, landmarks);
     }
 
     @Test
@@ -99,15 +105,6 @@ class ALTTest {
             assertEquals(random.select(fiveNodes(), 1, seed)[0],
                     geographic.select(fiveNodes(), nodesOnALine(), 1, seed)[0]);
         }
-    }
-
-    @Test
-    void geographicSelectionUsesEveryNodeOnce() {
-        int[] landmarks = new GeographicFarthestLandmarkSelector()
-                .select(fiveNodes(), nodesOnALine(), 5, 42L);
-
-        Arrays.sort(landmarks);
-        assertArrayEquals(new int[]{0, 1, 2, 3, 4}, landmarks);
     }
 
     @Test
@@ -220,18 +217,7 @@ class ALTTest {
 
                 assertEquals(expected.distance(), actual.distance(), 1e-9, pair);
 
-                if (Double.isInfinite(expected.distance())) {
-                    assertEquals(0, actual.path().length, pair);
-                } else {
-                    int[] path = actual.path();
-
-                    assertTrue(path.length > 0, pair);
-                    assertEquals(source, path[0], pair);
-                    assertEquals(target, path[path.length - 1], pair);
-
-                    assertEquals(actual.distance(),
-                            pathLength(graph, path), 1e-9, pair);
-                }
+                assertValidPath(graph, source, target, actual);
             }
         }
     }
@@ -258,32 +244,6 @@ class ALTTest {
         assertEquals(Double.POSITIVE_INFINITY, unreachable.distance());
         assertEquals(0, unreachable.path().length);
     }
-
-    private double pathLength(Graph graph, int[] path) {
-        double length = 0;
-
-        for (int i = 0; i < path.length - 1; i++) {
-            int from = path[i];
-            int to = path[i + 1];
-            double weight = Double.POSITIVE_INFINITY;
-
-            for (int edge = graph.edgeStart(from);
-                 edge < graph.edgeEnd(from); edge++) {
-
-                if (graph.edgeTarget(edge) == to) {
-                    weight = Math.min(weight, graph.edgeWeight(edge));
-                }
-            }
-
-            assertTrue(Double.isFinite(weight),
-                    "missing edge " + from + " -> " + to);
-
-            length += weight;
-        }
-
-        return length;
-    }
-
 
     @Test
     void altAgreesWithDijkstraOnNewYork() throws IOException {
@@ -320,12 +280,7 @@ class ALTTest {
             assertEquals(expected.distance(), actual.distance(), 1e-9,
                     "from " + source + " to " + target);
 
-            if (Double.isFinite(actual.distance())) {
-                assertEquals(actual.distance(),
-                        pathLength(graph, actual.path()), 1e-9);
-            } else {
-                assertEquals(0, actual.path().length);
-            }
+            assertValidPath(graph, source, target, actual);
         }
     }
 

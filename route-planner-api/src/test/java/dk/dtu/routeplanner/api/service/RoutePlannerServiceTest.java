@@ -3,6 +3,7 @@ package dk.dtu.routeplanner.api.service;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RoutePlannerServiceTest {
 
@@ -61,42 +63,68 @@ class RoutePlannerServiceTest {
 
     @Test
     void allAlgorithmsFindTheShortestRoute() {
-        ComparisonResponse comparison = service.compareAlgorithms(0, 4, "dijkstra");
-
-        for (ComparisonResult result : comparison.results()) {
-            assertEquals(8.0, result.distance(), result.algorithm());
+        for (String selected : List.of("dijkstra", "bidirectional", "astar", "alt")) {
+            ComparisonResponse comparison = service.compareAlgorithms(0, 4, selected);
+            assertEquals(0, comparison.source());
+            assertEquals(4, comparison.target());
+            assertEquals(List.of("dijkstra", "bidirectional", "astar", "alt"),
+                    comparison.results().stream().map(ComparisonResult::algorithm).toList());
+            for (ComparisonResult result : comparison.results()) {
+                assertTrue(result.reachable(), result.algorithm());
+                assertEquals(8.0, result.distance(), result.algorithm());
+                assertEquals(5, result.pathNodes(), result.algorithm());
+                if (result.algorithm().equals(selected)) {
+                    assertEquals(result.settledNodes(), comparison.route().getSettledNodes(), selected);
+                    assertEquals(result.relaxedEdges(), comparison.route().getRelaxedEdges(), selected);
+                }
+            }
+            assertEquals(selected, comparison.route().getAlgorithm());
+            assertArrayEquals(new int[]{0, 1, 2, 3, 4}, comparison.route().getPath());
+            double[][] coordinates = comparison.route().getCoordinates();
+            assertEquals(5, coordinates.length);
+            for (int node = 0; node < coordinates.length; node++) {
+                assertArrayEquals(new double[]{-73.99 + node * 0.001, 40.75}, coordinates[node], 1e-9);
+            }
         }
-
-        assertArrayEquals(new int[]{0, 1, 2, 3, 4}, comparison.route().getPath());
-        assertArrayEquals(new double[]{-73.99, 40.75}, comparison.route().getCoordinates()[0], 1e-9);
     }
 
     @Test
     void unreachableTargetGivesNoRoute() {
         ComparisonResponse comparison = service.compareAlgorithms(0, 5, "dijkstra");
 
+        assertEquals(4, comparison.results().size());
         for (ComparisonResult result : comparison.results()) {
             assertFalse(result.reachable(), result.algorithm());
+            assertNull(result.distance(), result.algorithm());
+            assertEquals(0, result.pathNodes(), result.algorithm());
         }
 
         assertNull(comparison.route().getDistance());
         assertEquals(0, comparison.route().getPath().length);
+        assertEquals(0, comparison.route().getCoordinates().length);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"dijkstra", "duan"})
-    void singleSourceCountsReachableNodes(String algorithm) {
+    void singleSourceSummariesAndComparisonsAgree(String algorithm) {
         SingleSourceResponse response = service.computeSingleSource(0, algorithm);
 
+        assertEquals(algorithm, response.algorithm());
+        assertEquals(0, response.source());
+        assertEquals(6, response.nodeCount());
         assertEquals(5, response.reachableNodes());
         assertEquals(1, response.unreachableNodes());
-    }
+        assertEquals(5, response.settledNodes());
+        assertEquals(-73.99, response.sourceLongitude(), 1e-9);
+        assertEquals(40.75, response.sourceLatitude(), 1e-9);
 
-    @Test
-    void duanAgreesWithDijkstra() {
-        SingleSourceComparisonResponse comparison = service.compareSingleSource(0, "duan");
-
-        assertEquals("duan", comparison.result().algorithm());
+        SingleSourceComparisonResponse comparison = service.compareSingleSource(0, algorithm);
+        assertEquals(algorithm, comparison.result().algorithm());
+        assertEquals(5, comparison.result().reachableNodes());
+        assertEquals(1, comparison.result().unreachableNodes());
+        assertEquals(List.of("dijkstra", "duan"),
+                comparison.results().stream().map(SingleSourceResponse::algorithm).toList());
+        assertEquals(6, comparison.comparedNodes());
         assertEquals(0, comparison.distanceMismatches());
     }
 
@@ -106,6 +134,9 @@ class RoutePlannerServiceTest {
         SingleSourceResult duan = distances(0, 2, 5, Double.POSITIVE_INFINITY, 7);
 
         assertEquals(2, RoutePlannerService.countDistanceMismatches(dijkstra, duan, 5));
+        // Within tolerance, outside tolerance, and finite-to-infinite disagreement.
+        assertEquals(2, RoutePlannerService.countDistanceMismatches(
+                distances(1, 2, 3), distances(1 + 0.5e-6, 2 + 2e-6, Double.POSITIVE_INFINITY), 3));
     }
 
     private SingleSourceResult distances(double... values) {

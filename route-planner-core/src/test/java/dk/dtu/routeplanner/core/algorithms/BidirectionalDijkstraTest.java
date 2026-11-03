@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
 
+import static dk.dtu.routeplanner.core.algorithms.PathAssertions.assertValidPath;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -34,33 +35,37 @@ class BidirectionalDijkstraTest {
     }
 
     @Test
-    void findsShortestPathAndReconstructsIt() {
+    void reconstructsDirectedPathsIncludingUnreachableAndTrivialQueries() {
         RoadNetwork network = example();
-        SearchResult result = new BidirectionalDijkstra(network)
-                .findShortestPath(network.forward(), 0, 4);
+        BidirectionalDijkstra algorithm = new BidirectionalDijkstra(network);
+        SearchResult result = algorithm.findShortestPath(network.forward(), 0, 4);
 
         assertEquals(7.0, result.distance());
         assertArrayEquals(new int[]{0, 1, 2, 3, 4}, result.path());
+        SearchResult reverse = algorithm.findShortestPath(network.forward(), 4, 0);
+        assertEquals(Double.POSITIVE_INFINITY, reverse.distance());
+        assertEquals(0, reverse.path().length);
+        SearchResult same = algorithm.findShortestPath(network.forward(), 2, 2);
+        assertEquals(0.0, same.distance());
+        assertArrayEquals(new int[]{2}, same.path());
     }
 
     @Test
-    void respectsEdgeDirection() {
-        RoadNetwork network = example();
-        SearchResult result = new BidirectionalDijkstra(network)
-                .findShortestPath(network.forward(), 4, 0);
+    void continuesPastTheFirstTentativeOverlap() {
+        double infinity = Double.POSITIVE_INFINITY;
+        // The first overlap at node 1 costs 101. The route through 2 and 3 costs 6.
+        double[][] weights = {
+                {infinity, 1, 2, infinity, infinity},
+                {infinity, infinity, infinity, infinity, 100},
+                {infinity, infinity, infinity, 2, infinity},
+                {infinity, infinity, infinity, infinity, 2},
+                {infinity, infinity, infinity, infinity, infinity}
+        };
+        RoadNetwork network = new RoadNetwork(fromMatrix(weights, false), fromMatrix(weights, true));
+        SearchResult result = new BidirectionalDijkstra(network).findShortestPath(network.forward(), 0, 4);
 
-        assertEquals(Double.POSITIVE_INFINITY, result.distance());
-        assertEquals(0, result.path().length);
-    }
-
-    @Test
-    void sourceEqualsTarget() {
-        RoadNetwork network = example();
-        SearchResult result = new BidirectionalDijkstra(network)
-                .findShortestPath(network.forward(), 2, 2);
-
-        assertEquals(0.0, result.distance());
-        assertArrayEquals(new int[]{2}, result.path());
+        assertEquals(6, result.distance());
+        assertArrayEquals(new int[]{0, 2, 3, 4}, result.path());
     }
 
     @Test
@@ -125,15 +130,7 @@ class BidirectionalDijkstraTest {
             assertEquals(expected.distance(), actual.distance(), 1e-9,
                     "from " + source + " to " + target);
 
-            if (Double.isFinite(actual.distance())) {
-                int[] path = actual.path();
-                assertEquals(source, path[0]);
-                assertEquals(target, path[path.length - 1]);
-                assertEquals(actual.distance(), pathLength(graph, path), 1e-9,
-                        "path from " + source + " to " + target);
-            } else {
-                assertEquals(0, actual.path().length);
-            }
+            assertValidPath(graph, source, target, actual);
 
             dijkstraSettled += expected.settledCounter();
             bidirectionalSettled += actual.settledCounter();
@@ -165,22 +162,6 @@ class BidirectionalDijkstraTest {
                 () -> algorithm.findShortestPath(example().forward(), 0, 4));
     }
 
-
-    private double pathLength(Graph graph, int[] path) {
-        double total = 0;
-        for (int i = 1; i < path.length; i++) {
-            int from = path[i - 1];
-            int to = path[i];
-            double weight = Double.POSITIVE_INFINITY;
-            for (int edge = graph.edgeStart(from); edge < graph.edgeEnd(from); edge++) {
-                if (graph.edgeTarget(edge) == to) {
-                    weight = Math.min(weight, graph.edgeWeight(edge));
-                }
-            }
-            total += weight;
-        }
-        return total;
-    }
 
     private Graph fromMatrix(double[][] weights, boolean reversed) {
         int n = weights.length;

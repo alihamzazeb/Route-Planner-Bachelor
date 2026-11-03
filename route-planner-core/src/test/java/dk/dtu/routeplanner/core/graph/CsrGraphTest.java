@@ -9,11 +9,15 @@ public class CsrGraphTest {
 
     @Test
     void readsNodesAndEdgesFromTheArrays() {
-        int[] offsets = {0, 2, 5, 7, 9, 11, 13};
+        int[] offsets = {0, 2, 5, 5, 9, 11, 13};
         int[] targets = {1, 3, 0, 2, 4, 1, 5, 0, 4, 3, 5, 4, 2};
         double[] weights = {200, 130, 200, 200, 130, 200, 130, 130, 200, 200, 200, 200, 130};
         Graph graph = new CsrGraph(offsets, targets, weights);
 
+        // Mutating the caller's arrays must not change the stored graph.
+        offsets[1] = 0;
+        targets[2] = 5;
+        weights[4] = 999;
         assertEquals(6, graph.nodeCount());
 
         // node 1 has edge 2, 3 and 4
@@ -24,16 +28,8 @@ public class CsrGraphTest {
         assertEquals(4, graph.edgeTarget(4));
         assertEquals(130.0, graph.edgeWeight(4));
         assertEquals(13, graph.edgeEnd(5));
-    }
-
-    @Test
-    void nodeWithNoEdges() {
-        int[] offsets = {0, 2, 2, 3};
-        int[] targets = {1, 2, 0};
-        double[] weights = {10, 20, 30};
-        Graph g = new CsrGraph(offsets, targets, weights);
-
-        assertEquals(g.edgeStart(1), g.edgeEnd(1));
+        assertEquals(5, graph.edgeStart(2));
+        assertEquals(5, graph.edgeEnd(2));
     }
 
     @Test

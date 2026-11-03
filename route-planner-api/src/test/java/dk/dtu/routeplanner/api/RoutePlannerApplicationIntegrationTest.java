@@ -68,7 +68,12 @@ class RoutePlannerApplicationIntegrationTest {
                         .param("algorithm", algorithm))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.distance").value(DISTANCE_FROM_10_TO_500))
-                .andExpect(jsonPath("$.path[0]").value(10));
+                .andExpect(jsonPath("$.algorithm").value(algorithm))
+                .andExpect(jsonPath("$.source").value(10))
+                .andExpect(jsonPath("$.target").value(500))
+                .andExpect(jsonPath("$.reachable").value(true))
+                .andExpect(jsonPath("$.path[0]").value(10))
+                .andExpect(jsonPath("$.path[-1]").value(500));
     }
 
     @Test

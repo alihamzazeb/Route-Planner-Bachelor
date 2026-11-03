@@ -39,6 +39,12 @@ class SingleSourceControllerTest {
                         .param("algorithm", "duan"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.algorithm").value("duan"))
+                .andExpect(jsonPath("$.source").value(10))
+                .andExpect(jsonPath("$.nodeCount").value(100))
+                .andExpect(jsonPath("$.settledNodes").value(90))
+                .andExpect(jsonPath("$.relaxedEdges").value(220))
+                .andExpect(jsonPath("$.sourceLongitude").value(-73.99))
+                .andExpect(jsonPath("$.sourceLatitude").value(40.75))
                 .andExpect(jsonPath("$.reachableNodes").value(90))
                 .andExpect(jsonPath("$.unreachableNodes").value(10));
     }

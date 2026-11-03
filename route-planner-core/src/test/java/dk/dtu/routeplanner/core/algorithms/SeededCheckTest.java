@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Random;
 
+import static dk.dtu.routeplanner.core.algorithms.PathAssertions.assertValidPath;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -37,36 +38,31 @@ class SeededCheckTest {
         line = new StraightLine(loader.loadCoordinates(NEW_YORK_COORDINATES_PATH));
     }
 
-    // Runs any point-to-point algorithm on the same 100 seeded pairs and checks every
-    // distance against single-source Dijkstra. Returns how many nodes it settled in total.
-    private static long checkAgainstDijkstra(PointToPointAlgorithm algorithm) {
+    @Test
+    void aStarAgreesWithDijkstraAndSettlesFewerNodes() {
         Random random = new Random(SEED);
-        Dijkstra reference = new Dijkstra();
-        long settled = 0;
+        Dijkstra dijkstra = new Dijkstra();
+        AStar aStar = new AStar(line.smallestLimit(graph), line);
+        long dijkstraSettled = 0;
+        long aStarSettled = 0;
 
         for (int i = 0; i < SOURCES; i++) {
             int source = random.nextInt(graph.nodeCount());
-            SingleSourceResult all = reference.computeShortestPaths(graph, source);
-
+            SingleSourceResult all = dijkstra.computeShortestPaths(graph, source);
             for (int j = 0; j < TARGETS_PER_SOURCE; j++) {
                 int target = random.nextInt(graph.nodeCount());
-                SearchResult result = algorithm.findShortestPath(graph, source, target);
-
-                assertEquals(all.distance(target), result.distance(), 1e-9,
-                        "from " + source + " to " + target);
-                settled += result.settledCounter();
+                String pair = source + " -> " + target;
+                SearchResult reference = dijkstra.findShortestPath(graph, source, target);
+                SearchResult actual = aStar.findShortestPath(graph, source, target);
+                assertEquals(all.distance(target), reference.distance(), 1e-9, pair);
+                assertEquals(all.distance(target), actual.distance(), 1e-9, pair);
+                assertValidPath(graph, source, target, reference);
+                assertValidPath(graph, source, target, actual);
+                dijkstraSettled += reference.settledCounter();
+                aStarSettled += actual.settledCounter();
             }
         }
-        return settled;
-    }
-
-    @Test
-    void aStarAgreesWithDijkstraAndSettlesFewerNodes() {
-        // this also checks dijkstra point to point
-        long dijkstraSettled = checkAgainstDijkstra(new Dijkstra());
-        long aStarSettled = checkAgainstDijkstra(new AStar(line.smallestLimit(graph), line));
-
-        System.out.println("settled on 100 seeded pairs, Dijkstra " + dijkstraSettled + ", A* " + aStarSettled);
-        assertTrue(aStarSettled < dijkstraSettled);
+        assertTrue(aStarSettled < dijkstraSettled,
+                "A* settled " + aStarSettled + " nodes, Dijkstra " + dijkstraSettled);
     }
 }

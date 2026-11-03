@@ -61,11 +61,8 @@ public class DimacsLoaderTest {
         assertEquals(3, rev.edgeEnd(1));
         assertEquals(0, rev.edgeTarget(1));
         assertEquals(3, rev.edgeTarget(2));
-    }
-
-    @Test
-    void smallGraphReverseMatchesForward() throws IOException {
-        assertReverseMatchesForward(loadSmall());
+        assertReverseMatchesForward(network);
+        assertReverseMatchesForward(new RoadNetwork(rev, fwd));
     }
 
     @Test

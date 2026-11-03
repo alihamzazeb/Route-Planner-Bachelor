@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 import dk.dtu.routeplanner.core.loader.DimacsLoader;
 
@@ -17,40 +16,17 @@ public class StraightLineTest {
     private static final Path NEW_YORK_COORDINATES_PATH = Path.of("../data/USA-road-d.NY.co");
 
 
-    @TempDir
-    Path tempDir;
-
-    private Coordinates loadSmallCoordinates() throws IOException {
-        Path file = tempDir.resolve("small.co");
-        Files.writeString(file, """
-            c tiny example
-            p aux sp co 3
-            v 1 -73530767 41085396
-            v 3 -73519366 41048796
-            v 2 -73530538 41086098
-            """);
-        return new DimacsLoader().loadCoordinates(file);
+    private StraightLine smallCoordinates() {
+        return new StraightLine(new Coordinates(
+                new int[]{-73530767, -73530538, -73519366},
+                new int[]{41085396, 41086098, 41048796}));
     }
 
     @Test
-    void firstRoadDistance() throws IOException {
-        StraightLine line = new StraightLine(loadSmallCoordinates());
-
-        double result = line.distance(0, 1);
-
-        assertEquals(722.9, result, 0.1);
-    }
-
-    @Test
-    void smallestLimitSkipsNodesAtTheSameSpot() throws IOException {
-        Path file = tempDir.resolve("same-spot.co");
-        Files.writeString(file, """
-            p aux sp co 3
-            v 1 -73530767 41085396
-            v 2 -73530767 41085396
-            v 3 -73530538 41086098
-            """);
-        StraightLine line = new StraightLine(new DimacsLoader().loadCoordinates(file));
+    void smallestLimitSkipsNodesAtTheSameSpot() {
+        StraightLine line = new StraightLine(new Coordinates(
+                new int[]{-73530767, -73530767, -73530538},
+                new int[]{41085396, 41085396, 41086098}));
 
         Graph graph = new CsrGraph(
             new int[]{0, 1, 2, 2},
@@ -64,8 +40,9 @@ public class StraightLineTest {
     }
 
     @Test
-    void smallestLimitOnThreeRoads() throws IOException {
-        StraightLine line = new StraightLine(loadSmallCoordinates());
+    void scalesTheKnownRoadDistanceByTheTightestEdge() {
+        StraightLine line = smallCoordinates();
+        assertEquals(722.9, line.distance(0, 1), 0.1);
 
         Graph graph = new CsrGraph(
             new int[]{0, 1, 3, 3},
@@ -79,27 +56,14 @@ public class StraightLineTest {
     }
 
     @Test
-    void smallestLimitOnNewYork() throws IOException {
-        assumeTrue(Files.isRegularFile(NEW_YORK_GRAPH_PATH), "New York graph not available");
-        assumeTrue(Files.isRegularFile(NEW_YORK_COORDINATES_PATH), "New York coordinates not available");
-        DimacsLoader loader = new DimacsLoader();
-        RoadNetwork network = loader.load(NEW_YORK_GRAPH_PATH);
-        StraightLine line = new StraightLine(loader.loadCoordinates(NEW_YORK_COORDINATES_PATH));
-
-        double c = line.smallestLimit(network.forward());
-
-        // c we use for A* in the experiments
-        assertEquals(0.7973, c, 0.0001);
-    }
-
-
-    @Test
-    void onlyTinyRoadsFallBelowOne() throws IOException {
+    void newYorkScalingMatchesTheKnownLimitAndOnlyTinyRoadsFallBelowOne() throws IOException {
         assumeTrue(Files.isRegularFile(NEW_YORK_GRAPH_PATH), "New York graph not available");
         assumeTrue(Files.isRegularFile(NEW_YORK_COORDINATES_PATH), "New York coordinates not available");
         DimacsLoader loader = new DimacsLoader();
         Graph graph = loader.load(NEW_YORK_GRAPH_PATH).forward();
         StraightLine line = new StraightLine(loader.loadCoordinates(NEW_YORK_COORDINATES_PATH));
+
+        assertEquals(0.7973, line.smallestLimit(graph), 0.0001);
 
         int belowOne = 0;
         double largestWeight = 0;
@@ -117,13 +81,10 @@ public class StraightLineTest {
                 if (limit < 1.0) {
                     belowOne++;
                     largestWeight = Math.max(largestWeight, weight);
-                    System.out.printf("a %d %d   weight %.0f   straight %.1f   limit %.3f%n",
-                            u + 1, v + 1, weight, d, limit);
                 }
             }
         }
 
-        System.out.println("roads with a limit below 1.0: " + belowOne);
         assertEquals(24, belowOne);
         assertTrue(largestWeight <= 3);
     }
