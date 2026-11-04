@@ -1,4 +1,5 @@
 package dk.dtu.routeplanner.core.algorithms.duan;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -6,7 +7,7 @@ import java.util.TreeMap;
 
 import dk.dtu.routeplanner.core.algorithms.duan.Duan.Entry;
 
-// the block queue from the paper (lemma 3.3)
+// Lemma 3.3: D0 holds prepended blocks; D1 holds inserted blocks indexed by upper bound.
 final class DuanQueue {
     record Batch(Entry bound, List<Integer> sources) {}
 
@@ -109,17 +110,10 @@ final class DuanQueue {
             entries[value.node()] = item;
             pending.add(item);
         }
-        int count = 0;
-        for (Item item : pending) {
-            if (entries[item.value.node()] == item) {
-                pending.set(count++, item);
-            }
-        }
-        Item[] items = new Item[count];
-        for (int i = 0; i < count; i++) {
-            items[i] = pending.get(i);
-        }
-        prependBlocks(items, 0, count);
+        // A later duplicate may have replaced an item from this same batch.
+        pending.removeIf(item -> entries[item.value.node()] != item);
+        Item[] items = pending.toArray(Item[]::new);
+        prependBlocks(items, 0, items.length);
     }
 
     Batch pull() {
@@ -267,6 +261,7 @@ final class DuanQueue {
         prepended = block;
     }
 
+    // Median-of-medians keeps selection linear; sorting the whole batch would add a log factor.
     static void select(Item[] items, int from, int to, int rank) {
         while (to - from > 5) {
             int medians = 0;

@@ -1,170 +1,139 @@
 # Route Planner
 
-Bachelor project in Software Technology at the Technical University of Denmark (DTU).
+A Java route-planning service developed as a BSc Software Technology project at the Technical University of Denmark (DTU). It implements and evaluates shortest-path algorithms on directed road networks, with a REST API, an interactive map and reproducible benchmarks.
 
-The project implements and compares shortest-path algorithms on a directed road network. It includes the algorithms, a Spring Boot API, a browser-based map, and a separate JMH module for performance measurements.
+The experiments use the New York distance-weighted graph from the 9th DIMACS Implementation Challenge: **264,346 vertices and 733,846 directed edges**.
 
-The current experiments use the DIMACS New York road network with 264,346 nodes and 733,846 directed arcs.
+## Algorithms
 
-## Implemented algorithms
+| Problem | Algorithm | Approach |
+| --- | --- | --- |
+| Point-to-point | Dijkstra | Baseline shortest-path search |
+| Point-to-point | Bidirectional Dijkstra | Searches from both ends using forward and reverse edges |
+| Point-to-point | A* | Uses a conservatively scaled straight-line heuristic |
+| Point-to-point | ALT | Uses A* with precomputed distances to and from landmarks |
+| Single-source | Dijkstra | Computes distances from one source to every vertex |
+| Single-source | Duan | Java adaptation of the BMSSP-based shortest-path algorithm |
 
-**Point-to-point shortest paths**
-
-- **Dijkstra:** Computes a shortest path between a source and a target. Also used as the correctness reference.
-- **Bidirectional Dijkstra:** Searches from both endpoints using the forward and reverse graphs.
-- **A\*:** Uses a scaled straight-line distance heuristic based on the node coordinates.
-- **ALT:** Runs A\* with landmark-based lower bounds. Distances to and from each landmark are precomputed. Both seeded random selection and geographical farthest-first selection are implemented.
-
-**Single-source shortest paths**
-
-- **Dijkstra:** Computes distances from one source to all reachable nodes.
-- **Duan:** An implementation based on the BMSSP approach, with graph preparation and bounded or transformed graph modes. It is evaluated separately from the point-to-point algorithms.
-
-The graph is stored in compressed sparse row (CSR) format. The loader builds both forward and reverse graphs, which are needed for Bidirectional Dijkstra and directed ALT bounds.
+The graph is represented using forward and reverse compressed sparse row (CSR) structures. ALT supports both seeded random landmark selection and geographical farthest-first selection. Duan is based on the BMSSP approach of [Duan et al.](https://arxiv.org/abs/2504.17033v2). Its implementation is split into `Duan` (recursive searches and pivot selection), `DuanGraph` (graph preparation) and `DuanQueue` (batched frontier operations). It supports bounded and degree-transformed graph preparation.
 
 ## Project structure
 
 ```text
-route-planner-core/       Graph structures, DIMACS loader, algorithms and unit tests
-route-planner-api/        Spring Boot API, application tests and map interface
-route-planner-benchmark/  JMH benchmarks and experiment runners
-  src/main/java/dk/dtu/routeplanner/benchmark/
-    expa/                Single-source: Dijkstra vs. Duan
-    expb/                Point-to-point: Dijkstra, Bidirectional, A* and ALT
-benchmark-data/
-  workloads/             Saved source nodes and route pairs
-  results/               Benchmark results and correctness checks
-data/                    DIMACS graph and coordinate files (not tracked by Git)
+route-planner-core/       Graph structures, DIMACS loader and algorithms
+route-planner-api/        Spring Boot REST API and MapLibre web interface
+route-planner-benchmark/  JMH benchmarks, split into expa/ and expb/
+benchmark-data/           Fixed workloads and recorded results
+data/                     New York DIMACS graph and coordinates
+scripts/                  Benchmark figure generator
 ```
 
-## Requirements
-
-- Java 21
-- Maven
-- DIMACS New York distance graph and coordinate files
-
-Put the network files in `data/` at the repository root:
-
-```text
-data/
-  USA-road-d.NY.gr
-  USA-road-d.NY.co
-```
-
-The corresponding file paths are configured in `route-planner-api/src/main/resources/application.properties`.
-
-The map works without an API key. If you have a CARTO API key, you can add it in `route-planner-api/src/main/resources/static/config.local.js`:
-
-```javascript
-window.CARTO_API_KEY = "YOUR_CARTO_API_KEY";
-```
-
-This file is ignored by Git. The key is still sent to the browser, so restrict it through the provider's settings. The map needs an internet connection to load MapLibre and the basemap.
+Core algorithm and graph tests are under `route-planner-core/src/test/`; API and integration tests are under `route-planner-api/src/test/`. The benchmark module calls the algorithms directly, without HTTP or browser overhead.
 
 ## Build and run
 
-Run the tests from the repository root:
+**Requirements:** Java 21 and Maven. Python 3 with Matplotlib is needed only to regenerate figures. The map requires internet access for its external assets.
+
+The repository includes the New York dataset:
+
+```text
+data/USA-road-d.NY.gr
+data/USA-road-d.NY.co
+```
+
+From the repository root, build and test with:
 
 ```bash
 mvn clean verify
 ```
 
-Start `RoutePlannerApplication` from your IDE with the repository root as its working directory. The application loads the graph and prepares the algorithms at startup.
+Start `dk.dtu.routeplanner.api.RoutePlannerApplication` from your IDE, with the **repository root as the working directory** so the relative dataset paths resolve correctly. Alternatively, after the tests pass, install the local modules and start the API from the repository root:
 
-Open:
+```bash
+mvn install -DskipTests
+mvn -pl route-planner-api spring-boot:run \
+  -Dspring-boot.run.workingDirectory="$PWD"
+```
 
-- Application: http://localhost:8080/map.html
-- Status endpoint: http://localhost:8080/status
+Open [the map](http://localhost:8080/map.html) or check [the API status](http://localhost:8080/status).
 
-In the web interface, enter node IDs to find a route or compute single-source distances. The point-to-point view draws the returned path on the map and allows comparisons between the four routing algorithms. The single-source view marks the source node and compares the Dijkstra and Duan summaries.
+The map uses MapLibre GL JS and a CARTO basemap. An API key is optional. If needed, set `window.CARTO_API_KEY` in `route-planner-api/src/main/resources/static/config.local.js`. This file is Git-ignored; restrict any browser-side key at the provider.
+
+The interface accepts **zero-based node IDs**, not addresses. Point-to-point queries display the route and search statistics; the comparison view runs all four algorithms and displays the selected route. Single-source searches compute a full distance vector but return summary statistics rather than all distances. The comparison endpoint checks the complete vectors from Dijkstra and Duan for disagreements.
 
 ## REST API
 
-All node IDs are zero-based.
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /status` | Service status |
+| `GET /api/routes` | Point-to-point route |
+| `GET /api/routes/compare` | Compare Dijkstra, Bidirectional Dijkstra, A* and ALT |
+| `GET /api/single-source` | Compute single-source distances and return a summary |
+| `GET /api/single-source/compare` | Compare all computed distances from Dijkstra and Duan |
 
-| Endpoint | Description |
-|---|---|
-| `GET /status` | Check that the API is running |
-| `GET /api/routes` | Shortest route between a source and a target |
-| `GET /api/routes/compare` | Compare the four point-to-point algorithms |
-| `GET /api/single-source` | Single-source computation using Dijkstra or Duan |
-| `GET /api/single-source/compare` | Compare Dijkstra and Duan on one source |
+Example requests:
 
-Examples:
-
-```text
-/api/routes?source=10&target=500&algorithm=astar
-/api/routes/compare?source=10&target=500&algorithm=alt
-/api/single-source?source=10&algorithm=duan
-/api/single-source/compare?source=10&algorithm=duan
+```bash
+curl 'http://localhost:8080/api/routes?source=10&target=500&algorithm=astar'
+curl 'http://localhost:8080/api/routes/compare?source=10&target=500&algorithm=alt'
+curl 'http://localhost:8080/api/single-source?source=10&algorithm=duan'
 ```
 
-The point-to-point responses include the path, coordinates, distance and search counters. Single-source responses summarize reachability and search work; the comparison also checks whether the two algorithms agree on all node distances. Invalid node IDs and unsupported algorithm names return HTTP 400.
+The route responses include node IDs, coordinates, distance and search counters. Invalid node IDs or algorithm names return HTTP 400. The API's individual timing measurements are for display, **not** the controlled performance evaluation.
 
-The API's `timeMs` values are timings from individual requests, not controlled benchmark results. Use the JMH results for performance comparisons.
+## Experiments
 
-## Benchmarking
+Performance is measured separately for two different shortest-path problems using **JMH 1.37**. Query timing excludes graph loading and algorithm preparation. Preparation is measured separately.
 
-The benchmark module is separated into two experiments:
+**Experiment A: Single-source.** Dijkstra and prepared bounded-mode Duan are compared on ten fixed New York sources. The correctness runner checks every distance in each returned vector.
 
-**Experiment A: Single-source** compares Dijkstra and Duan on ten fixed source nodes from the New York graph. The runner checks the complete distance vectors for correctness. JMH measures query time and allocation, with Duan's one-time graph preparation measured separately.
+**Experiment B: Point-to-point.** Dijkstra, Bidirectional Dijkstra, A* and ALT are compared on 100 fixed reachable routes: 33 short, 33 medium and 34 long. Additional measurements cover search effort, allocation, preprocessing, the number of ALT landmarks (1, 2, 4 and 8), and random versus geographical farthest-first selection. The main ALT benchmark uses four random landmarks with seed `2026`; the interactive API uses seed `42`.
 
-**Experiment B: Point-to-point** compares Dijkstra, Bidirectional Dijkstra, A* and ALT on 100 reachable routes, divided into 33 short, 33 medium and 34 long routes. Additional benchmarks examine route length, preprocessing, heap allocation, landmark count (1, 2, 4 and 8), and random versus geographical farthest-first landmark placement.
+Recorded results and workloads are in `benchmark-data/results/` and `benchmark-data/workloads/`. The primary Experiment B timings are in `NY-balanced-time.json`.
 
-The main ALT point-to-point benchmark uses four randomly selected landmarks with seed `2026`. The web application currently uses four random landmarks with seed `42`, so its interactive timings are not directly equivalent to the benchmark configuration.
-
-Build the benchmark archive:
+Build the benchmark JAR:
 
 ```bash
 mvn -pl route-planner-benchmark -am -DskipTests package
 ```
 
-List the JMH benchmarks:
+Run the correctness checks:
+
+```bash
+java -cp route-planner-benchmark/target/benchmarks.jar \
+  dk.dtu.routeplanner.benchmark.expa.SingleSourceExperimentRunner
+
+java -cp route-planner-benchmark/target/benchmarks.jar \
+  dk.dtu.routeplanner.benchmark.expb.BenchmarkRunner
+```
+
+These runners overwrite their validation or counter CSV files in `benchmark-data/results/`. Run them in a separate copy of the project to preserve the submitted results.
+
+List the available JMH benchmarks:
 
 ```bash
 java -jar route-planner-benchmark/target/benchmarks.jar -l
 ```
 
-Run the Experiment A correctness check:
+To regenerate report figures from the saved results:
 
 ```bash
-java -cp route-planner-benchmark/target/benchmarks.jar \
-  dk.dtu.routeplanner.benchmark.expa.SingleSourceExperimentRunner
+python3 -m pip install matplotlib
+python3 scripts/benchmarkFigures.py
 ```
 
-Run the Experiment A query-time benchmark:
+The figures are saved as PDFs under `report-figures/`, which is excluded from Git.
 
-```bash
-java -jar route-planner-benchmark/target/benchmarks.jar \
-  '.*expa.SingleSourceBenchmark.search' \
-  -bm avgt -tu ms -t 1 -f 2 -wi 3 -w 10s -i 5 -r 10s
-```
+## Testing and limitations
 
-Experiment B requires `benchmark-data/workloads/NY-100pairs-balanced-seed42.csv` and the three category CSVs. If they are not present, generate them from the New York graph:
-
-```bash
-java -cp route-planner-benchmark/target/benchmarks.jar \
-  dk.dtu.routeplanner.benchmark.expb.BalancedWorkloadGenerator
-```
-
-Run the main Experiment B query-time benchmark:
-
-```bash
-java -jar route-planner-benchmark/target/benchmarks.jar \
-  '.*expb.PointToPointBenchmark.search' \
-  -bm avgt -tu ms -t 1 -f 2 -wi 3 -w 2s -i 5 -r 2s
-```
-
-These JMH query benchmarks exclude graph loading and algorithm preprocessing. Preparation is evaluated separately. The workload selection and measurements are specific to the New York network; they should not be treated as results for other road networks.
-
-## Testing
-
-Unit tests cover graph structures, loading and shortest-path algorithms. Spring MVC tests cover request validation and API responses. `RoutePlannerApplicationIntegrationTest` starts the Spring application using the real New York dataset and checks routing and single-source comparisons through the API.
-
-To run the optional larger New York correctness tests for Duan:
+JUnit tests cover graph loading and representation, algorithm correctness, path reconstruction, directed landmarks, Duan's graph preparation and queue, numerical edge cases, and API validation. Additional New York Duan tests can be enabled with:
 
 ```bash
 mvn -pl route-planner-core -Dduan.ny=true test
 ```
 
-The repository excludes the graph files, so the tests that use New York data require those files to be present locally.
+The evaluation uses **one road network** and does not establish performance scaling across graph sizes. The short/medium/long route categories and kilometre display use an inferred conversion of **10 stored weight units per metre**; the algorithms themselves operate on the original edge weights. This conversion is not independently verified against the dataset documentation.
+
+The existing Experiment A timing and allocation files were recorded before the latest Duan implementation changes and should not be presented as new measurements of that revision. Duan's published theoretical bound is not independently established for this Java adaptation.
+
+Dataset source: [9th DIMACS Implementation Challenge](https://www.diag.uniroma1.it/challenge9/).

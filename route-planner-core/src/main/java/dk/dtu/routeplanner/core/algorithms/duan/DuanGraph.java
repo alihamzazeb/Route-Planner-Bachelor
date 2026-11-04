@@ -37,10 +37,6 @@ final class DuanGraph implements Graph {
         this.transformed = transformed;
     }
 
-    static DuanGraph prepare(Graph graph, int source) {
-        return prepare(graph, source, Duan.DegreeMode.TRANSFORM);
-    }
-
     static DuanGraph prepare(Graph graph, int source, Duan.DegreeMode mode) {
         int n = graph.nodeCount();
         int[] mapping = new int[n];

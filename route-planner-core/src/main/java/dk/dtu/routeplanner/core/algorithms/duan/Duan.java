@@ -21,7 +21,9 @@ import dk.dtu.routeplanner.core.model.SingleSourceResult;
 public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
 
     public enum DegreeMode {
+        // Reduce both in-degree and out-degree to at most two.
         TRANSFORM,
+        // Keep the compact graph if both degrees are at most eight; otherwise transform.
         BOUNDED
     }
 
@@ -455,6 +457,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
         }
     }
 
+    // Each recursion level owns its scratch sets so child calls cannot clear their parent's state.
     private static class Workspace {
         final VertexSet completed;
         final VertexSet visited;
@@ -473,6 +476,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
         }
     }
 
+    // Constant-time membership; clearing visits only the vertices actually added.
     private static class VertexSet {
         final List<Integer> values = new ArrayList<>();
         private final boolean[] present;

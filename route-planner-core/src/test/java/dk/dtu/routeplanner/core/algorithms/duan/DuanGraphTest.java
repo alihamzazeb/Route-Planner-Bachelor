@@ -30,8 +30,7 @@ class DuanGraphTest {
                 SingleSourceResult expected = new Dijkstra().computeShortestPaths(original, source);
                 for (Duan.DegreeMode mode : Duan.DegreeMode.values()) {
                     DuanGraph all = DuanGraph.prepareAll(original, mode);
-                    DuanGraph local = mode == Duan.DegreeMode.TRANSFORM
-                            ? DuanGraph.prepare(original, source) : DuanGraph.prepare(original, source, mode);
+                    DuanGraph local = DuanGraph.prepare(original, source, mode);
                     assertEquals(degree, new Duan(original, mode).graphInfo().maxDegree());
                     assertEquals(expected.settledCounter(), local.reachableCount);
                     DuanGraph.Reachability reachable = all.reachableFrom(source);
