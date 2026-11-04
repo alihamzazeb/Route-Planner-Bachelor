@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.benchmark.expb;
 
 import java.io.IOException;
@@ -10,7 +9,6 @@ import java.util.List;
 import java.util.Locale;
 
 import dk.dtu.routeplanner.core.algorithms.AStar;
-import dk.dtu.routeplanner.core.algorithms.Dijkstra;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkHeuristic;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkPreprocessor;
 import dk.dtu.routeplanner.core.algorithms.alt.RandomLandmarkSelector;
@@ -20,12 +18,10 @@ import dk.dtu.routeplanner.core.loader.DimacsLoader;
 import dk.dtu.routeplanner.core.model.SearchResult;
 
 public final class LandmarkSensitivityRunner {
-
     private static final int[] COUNTS = {1, 2, 4, 8};
     private static final int TRIALS = 5;
 
-    private LandmarkSensitivityRunner() {
-    }
+    private LandmarkSensitivityRunner() {}
 
     public static void main(String[] args) throws IOException {
         DimacsLoader loader = new DimacsLoader();
@@ -39,17 +35,7 @@ public final class LandmarkSensitivityRunner {
                 BenchmarkConfig.PAIR_COUNT
         );
 
-        Dijkstra dijkstra = new Dijkstra();
-
-        double[] expectedDistances = new double[queries.length];
-
-        for (int i = 0; i < queries.length; i++) {
-            expectedDistances[i] = dijkstra.findShortestPath(graph, queries[i][0], queries[i][1]).distance();
-
-            if (!Double.isFinite(expectedDistances[i])) {
-                throw new IllegalStateException("Unreachable pair at index " + i);
-            }
-        }
+        double[] expectedDistances = RouteChecks.referenceDistances(graph, queries);
 
         LandmarkPreprocessor preprocessor = new LandmarkPreprocessor(network);
 
@@ -61,7 +47,6 @@ public final class LandmarkSensitivityRunner {
         counterRows.add("landmarks,queries,mean_settled,mean_relaxed,distance_tables_mib");
 
         for (int count : COUNTS) {
-
             int[] landmarks = new RandomLandmarkSelector().select(
                     graph,
                     count,
@@ -74,21 +59,14 @@ public final class LandmarkSensitivityRunner {
             double tableMiB = 2.0 * count * graph.nodeCount() * Double.BYTES / (1024.0 * 1024.0);
 
             for (int trial = 1; trial <= TRIALS; trial++) {
-
                 long start = System.nanoTime();
 
                 data = preprocessor.preprocess(landmarks);
 
                 double elapsedMs = (System.nanoTime() - start) / 1000000.0;
 
-                preprocessingRows.add(String.format(
-                        Locale.ROOT,
-                        "%d,%d,%.3f,%.3f",
-                        count,
-                        trial,
-                        elapsedMs,
-                        tableMiB
-                ));
+                preprocessingRows.add(String.format(Locale.ROOT, "%d,%d,%.3f,%.3f",
+                        count, trial, elapsedMs, tableMiB));
             }
 
             // the queries use the tables from the last trial
@@ -98,7 +76,6 @@ public final class LandmarkSensitivityRunner {
             long relaxedTotal = 0;
 
             for (int i = 0; i < queries.length; i++) {
-
                 SearchResult result = alt.findShortestPath(
                         graph,
                         queries[i][0],
@@ -119,41 +96,22 @@ public final class LandmarkSensitivityRunner {
 
             double meanRelaxed = relaxedTotal / (double) queries.length;
 
-            counterRows.add(String.format(
-                    Locale.ROOT,
-                    "%d,%d,%.2f,%.2f,%.3f",
-                    count,
-                    queries.length,
-                    meanSettled,
-                    meanRelaxed,
-                    tableMiB
-            ));
+            counterRows.add(String.format(Locale.ROOT, "%d,%d,%.2f,%.2f,%.3f",
+                    count, queries.length, meanSettled, meanRelaxed, tableMiB));
 
-            System.out.printf(
-                    Locale.ROOT,
+            System.out.printf(Locale.ROOT,
                     "%d landmarks: %.0f settled, %.0f relaxed on average, "
                             + "%.2f MiB distance tables%n",
-                    count,
-                    meanSettled,
-                    meanRelaxed,
-                    tableMiB
-            );
+                    count, meanSettled, meanRelaxed, tableMiB);
         }
 
         Path results = Path.of("benchmark-data/results");
         Files.createDirectories(results);
 
-        Files.write(
-                results.resolve("NY-landmarks-preprocessing.csv"),
-                preprocessingRows,
-                StandardCharsets.UTF_8
-        );
-
-        Files.write(
-                results.resolve("NY-landmarks-counters.csv"),
-                counterRows,
-                StandardCharsets.UTF_8
-        );
+        Files.write(results.resolve("NY-landmarks-preprocessing.csv"),
+                preprocessingRows, StandardCharsets.UTF_8);
+        Files.write(results.resolve("NY-landmarks-counters.csv"),
+                counterRows, StandardCharsets.UTF_8);
 
         System.out.println("All 100 routes verified for each landmark count.");
 

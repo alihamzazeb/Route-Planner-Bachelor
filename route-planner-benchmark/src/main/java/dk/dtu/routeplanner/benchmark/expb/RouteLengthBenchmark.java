@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.benchmark.expb;
 
 import java.io.IOException;
@@ -27,7 +26,6 @@ import dk.dtu.routeplanner.core.loader.DimacsLoader;
 
 @State(Scope.Benchmark)
 public class RouteLengthBenchmark {
-
     @Param({"dijkstra", "bidirectional", "astar", "alt"})
     public String algorithmName;
 
@@ -40,7 +38,6 @@ public class RouteLengthBenchmark {
 
     @Setup(Level.Trial)
     public void setup() throws IOException {
-
         DimacsLoader loader = new DimacsLoader();
 
         RoadNetwork network = loader.load(Path.of("data/USA-road-d.NY.gr"));
@@ -66,7 +63,6 @@ public class RouteLengthBenchmark {
         );
 
         algorithm = switch (algorithmName) {
-
             case "dijkstra" -> new Dijkstra();
 
             case "bidirectional" -> new BidirectionalDijkstra(network);

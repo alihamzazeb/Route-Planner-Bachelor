@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.benchmark.expa;
 
 import java.io.IOException;
@@ -22,7 +21,6 @@ import dk.dtu.routeplanner.core.loader.DimacsLoader;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 public class SingleSourcePreparationBenchmark {
-
     private Graph graph;
 
     @Setup(Level.Trial)

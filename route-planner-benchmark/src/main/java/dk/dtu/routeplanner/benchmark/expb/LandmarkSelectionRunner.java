@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.benchmark.expb;
 
 import java.io.IOException;
@@ -10,7 +9,6 @@ import java.util.List;
 import java.util.Locale;
 
 import dk.dtu.routeplanner.core.algorithms.AStar;
-import dk.dtu.routeplanner.core.algorithms.Dijkstra;
 import dk.dtu.routeplanner.core.algorithms.alt.GeographicFarthestLandmarkSelector;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkHeuristic;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkPreprocessor;
@@ -23,7 +21,6 @@ import dk.dtu.routeplanner.core.model.LandmarkPreprocessingResult;
 import dk.dtu.routeplanner.core.model.SearchResult;
 
 public final class LandmarkSelectionRunner {
-
     private static final String[] METHODS = {"random", "farthest"};
     private static final int[] COUNTS = {4, 8};
     private static final int TRIALS = 5;
@@ -44,27 +41,14 @@ public final class LandmarkSelectionRunner {
         );
 
         // Calculate correct shortest distances once.
-        Dijkstra dijkstra = new Dijkstra();
-        double[] expected = new double[pairs.length];
-
-        for (int i = 0; i < pairs.length; i++) {
-
-            expected[i] = dijkstra.findShortestPath(graph, pairs[i][0], pairs[i][1]).distance();
-
-            if (!Double.isFinite(expected[i])) {
-                throw new IllegalStateException("Unreachable query " + i);
-            }
-        }
+        double[] expected = RouteChecks.referenceDistances(graph, pairs);
 
         LandmarkPreprocessor preprocessor = new LandmarkPreprocessor(network);
 
         List<String> setupRows = new ArrayList<>();
         List<String> counterRows = new ArrayList<>();
 
-        setupRows.add(
-                "method,landmarks,selection_ms,preprocessing_ms,"
-                        + "total_setup_ms,table_mib"
-        );
+        setupRows.add("method,landmarks,selection_ms,preprocessing_ms,total_setup_ms,table_mib");
 
         counterRows.add("method,landmarks,queries,mean_settled,mean_relaxed");
 
@@ -81,12 +65,11 @@ public final class LandmarkSelectionRunner {
                 LandmarkPreprocessingResult prepared = null;
 
                 for (int trial = 0; trial < TRIALS; trial++) {
-
                     long start = System.nanoTime();
 
                     int[] landmarks = select(method, graph, line, count);
 
-                    selectionSumMs +=(System.nanoTime() - start) / 1000000.0;
+                    selectionSumMs += (System.nanoTime() - start) / 1000000.0;
 
                     start = System.nanoTime();
 
@@ -128,54 +111,27 @@ public final class LandmarkSelectionRunner {
                                 * Double.BYTES
                                 / (1024.0 * 1024.0);
 
-                setupRows.add(String.format(
-                        Locale.ROOT,
-                        "%s,%d,%.3f,%.3f,%.3f,%.3f",
-                        method,
-                        count,
-                        selectMs,
-                        preprocessMs,
-                        selectMs + preprocessMs,
-                        tableMiB
-                ));
+                setupRows.add(String.format(Locale.ROOT, "%s,%d,%.3f,%.3f,%.3f,%.3f",
+                        method, count, selectMs, preprocessMs, selectMs + preprocessMs, tableMiB));
+                counterRows.add(String.format(Locale.ROOT, "%s,%d,%d,%.2f,%.2f",
+                        method, count, pairs.length,
+                        settled / (double) pairs.length, relaxed / (double) pairs.length));
 
-                counterRows.add(String.format(
-                        Locale.ROOT,
-                        "%s,%d,%d,%.2f,%.2f",
-                        method,
-                        count,
-                        pairs.length,
-                        settled / (double) pairs.length,
-                        relaxed / (double) pairs.length
-                ));
-
-                System.out.printf(
-                        Locale.ROOT,
+                System.out.printf(Locale.ROOT,
                         "%s, %d landmarks: setup %.1f ms, "
                                 + "settled %.0f, relaxed %.0f%n",
-                        method,
-                        count,
-                        selectMs + preprocessMs,
-                        settled / (double) pairs.length,
-                        relaxed / (double) pairs.length
-                );
+                        method, count, selectMs + preprocessMs,
+                        settled / (double) pairs.length, relaxed / (double) pairs.length);
             }
         }
 
         Path results = Path.of("benchmark-data/results");
         Files.createDirectories(results);
 
-        Files.write(
-                results.resolve("NY-landmark-selection-setup.csv"),
-                setupRows,
-                StandardCharsets.UTF_8
-        );
-
-        Files.write(
-                results.resolve("NY-landmark-selection-counters.csv"),
-                counterRows,
-                StandardCharsets.UTF_8
-        );
+        Files.write(results.resolve("NY-landmark-selection-setup.csv"),
+                setupRows, StandardCharsets.UTF_8);
+        Files.write(results.resolve("NY-landmark-selection-counters.csv"),
+                counterRows, StandardCharsets.UTF_8);
 
         System.out.println("All four configurations matched Dijkstra on 100 routes.");
     }

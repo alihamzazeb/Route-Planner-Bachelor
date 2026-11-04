@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.benchmark.expb;
 
 import java.io.IOException;
@@ -30,7 +29,6 @@ import dk.dtu.routeplanner.core.model.SearchResult;
 
 @State(Scope.Benchmark)
 public class PointToPointBenchmark {
-
     private Graph graph;
     private int[][] queries;
     private PointToPointAlgorithm algorithm;
@@ -38,11 +36,8 @@ public class PointToPointBenchmark {
     @Param({"dijkstra", "bidirectional", "astar", "alt"})
     public String algorithmName;
 
-
-
     @Setup(Level.Trial)
     public void setup() throws IOException {
-
         DimacsLoader loader = new DimacsLoader();
 
         RoadNetwork network = loader.load(Path.of("data/USA-road-d.NY.gr"));
@@ -52,7 +47,6 @@ public class PointToPointBenchmark {
         queries = Workloads.readPairs(BenchmarkConfig.NY_WORKLOAD, graph.nodeCount(), BenchmarkConfig.PAIR_COUNT);
 
         switch (algorithmName) {
-
             case "dijkstra" -> {
                 algorithm = new Dijkstra();
             }
@@ -84,21 +78,13 @@ public class PointToPointBenchmark {
         }
     }
 
-
-
-
     @Benchmark
     @OperationsPerInvocation(BenchmarkConfig.PAIR_COUNT)
     public void search(Blackhole blackhole) {
-
         for (int[] query : queries) {
-
             SearchResult result = algorithm.findShortestPath(graph, query[0], query[1]);
 
             blackhole.consume(result);
         }
     }
-
-
-
 }

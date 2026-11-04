@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.benchmark.expa;
 
 import java.io.IOException;
@@ -27,7 +26,6 @@ import dk.dtu.routeplanner.core.loader.DimacsLoader;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 public class SingleSourceBenchmark {
-
     @Param({"dijkstra", "duan"})
     public String algorithmName;
 
@@ -42,7 +40,6 @@ public class SingleSourceBenchmark {
         sources = SingleSourceWorkload.read(SingleSourceWorkload.NY_SOURCES, graph.nodeCount());
 
         algorithm = switch (algorithmName) {
-
             case "dijkstra" -> new Dijkstra();
 
             case "duan" -> new Duan(graph, Duan.DegreeMode.BOUNDED);

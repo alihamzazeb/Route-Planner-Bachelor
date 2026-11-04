@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.benchmark.expb;
 
 import java.io.IOException;
@@ -14,12 +13,10 @@ import java.util.Set;
 
 import dk.dtu.routeplanner.core.algorithms.Dijkstra;
 import dk.dtu.routeplanner.core.graph.Graph;
-import dk.dtu.routeplanner.core.graph.RoadNetwork;
 import dk.dtu.routeplanner.core.graph.StraightLine;
 import dk.dtu.routeplanner.core.loader.DimacsLoader;
 
 public final class BalancedWorkloadGenerator {
-
     // The NY distance graph uses approximately 10 weight units per metre.
     private static final double UNITS_PER_METRE = 10.0;
 
@@ -62,12 +59,9 @@ public final class BalancedWorkloadGenerator {
     private BalancedWorkloadGenerator() {}
 
     public static void main(String[] args) throws IOException {
-
         DimacsLoader loader = new DimacsLoader();
 
-        RoadNetwork network = loader.load(Path.of("data/USA-road-d.NY.gr"));
-
-        Graph graph = network.forward();
+        Graph graph = loader.load(Path.of("data/USA-road-d.NY.gr")).forward();
 
         StraightLine straightLine = new StraightLine(loader.loadCoordinates(Path.of("data/USA-road-d.NY.co")));
 
@@ -83,12 +77,10 @@ public final class BalancedWorkloadGenerator {
         Files.createDirectories(WORKLOAD_DIR);
 
         for (Group group : Group.values()) {
-
             List<Route> routes = new ArrayList<>();
             int attempts = 0;
 
             while (routes.size() < group.count && attempts < MAX_ATTEMPTS) {
-
                 attempts++;
 
                 // making a pair
@@ -130,46 +122,27 @@ public final class BalancedWorkloadGenerator {
             }
 
             // organize the selected routes, saves them into CSV files
-            int[][] categoryPairs = new int[routes.size()][2];
-
             double min = Double.POSITIVE_INFINITY;
             double max = 0;
 
             for (int i = 0; i < routes.size(); i++) {
-
                 Route route = routes.get(i);
-
-                categoryPairs[i] = new int[]{route.source(), route.target()};
 
                 double km = route.weight() / UNITS_PER_METRE / 1000.0;
 
                 min = Math.min(min, km);
                 max = Math.max(max, km);
 
-                metadata.add(String.format(
-                        Locale.ROOT,
-                        "%s,%d,%d,%.0f,%.3f,%.3f",
-                        group.label,
-                        route.source(),
-                        route.target(),
-                        route.weight(),
-                        km,
-                        route.straightLineMetres() / 1000.0
-                ));
+                metadata.add(String.format(Locale.ROOT, "%s,%d,%d,%.0f,%.3f,%.3f",
+                        group.label, route.source(), route.target(), route.weight(),
+                        km, route.straightLineMetres() / 1000.0));
             }
 
             // Save the separate category workload.
-            Workloads.savePairs(WORKLOAD_DIR.resolve("NY-" + group.label + "-seed42.csv"), categoryPairs);
+            Workloads.savePairs(WORKLOAD_DIR.resolve("NY-" + group.label + "-seed42.csv"), pairs(routes));
 
-            System.out.printf(
-                    Locale.ROOT,
-                    "%s: %d routes, %.2f to %.2f km (%d attempts)%n",
-                    group.label,
-                    routes.size(),
-                    min,
-                    max,
-                    attempts
-            );
+            System.out.printf(Locale.ROOT, "%s: %d routes, %.2f to %.2f km (%d attempts)%n",
+                    group.label, routes.size(), min, max, attempts);
         }
 
         if (allRoutes.size() != BenchmarkConfig.PAIR_COUNT) {
@@ -177,23 +150,22 @@ public final class BalancedWorkloadGenerator {
         }
 
         // Combine short, medium and long into one workload.
-        int[][] combinedPairs = new int[allRoutes.size()][2];
-
-        for (int i = 0; i < allRoutes.size(); i++) {
-
-            Route route = allRoutes.get(i);
-
-            combinedPairs[i] = new int[]{route.source(), route.target()};
-        }
-
-        Workloads.savePairs(BenchmarkConfig.NY_WORKLOAD, combinedPairs);
+        Workloads.savePairs(BenchmarkConfig.NY_WORKLOAD, pairs(allRoutes));
 
         Files.write(WORKLOAD_DIR.resolve("NY-balanced-metadata-seed42.csv"),
-                metadata,
-                StandardCharsets.UTF_8
-        );
+                metadata, StandardCharsets.UTF_8);
 
-        System.out.println("Saved 100 balanced routes. " + "Run BenchmarkRunner to validate all four algorithms.");
+        System.out.println("Saved 100 balanced routes. Run BenchmarkRunner to validate all four algorithms.");
+    }
+
+    private static int[][] pairs(List<Route> routes) {
+        int[][] pairs = new int[routes.size()][2];
+        for (int i = 0; i < routes.size(); i++) {
+            Route route = routes.get(i);
+            pairs[i][0] = route.source();
+            pairs[i][1] = route.target();
+        }
+        return pairs;
     }
 
     private static long pairId(int source, int target) {

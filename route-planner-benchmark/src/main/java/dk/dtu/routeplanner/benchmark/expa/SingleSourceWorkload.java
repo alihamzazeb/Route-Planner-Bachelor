@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.benchmark.expa;
 
 import java.io.IOException;
@@ -9,7 +8,6 @@ import java.util.List;
 import java.util.Set;
 
 public final class SingleSourceWorkload {
-
     public static final int SOURCE_COUNT = 10;
 
     public static final Path NY_SOURCES = Path.of("benchmark-data/workloads/NY-10sources-seed42.csv");
@@ -17,7 +15,6 @@ public final class SingleSourceWorkload {
     private SingleSourceWorkload() {}
 
     public static int[] read(Path file, int nodeCount) throws IOException {
-
         List<String> lines = Files.readAllLines(file);
 
         if (lines.size() != SOURCE_COUNT + 1 || !"source".equals(lines.get(0))) {

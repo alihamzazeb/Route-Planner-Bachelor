@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.benchmark.expa;
 
 import java.nio.file.Files;
@@ -12,11 +11,9 @@ import java.util.Set;
 import dk.dtu.routeplanner.core.loader.DimacsLoader;
 
 public final class SingleSourceWorkloadGenerator {
-    
     private SingleSourceWorkloadGenerator() {}
 
     public static void main(String[] args) throws Exception {
-
         int nodeCount = new DimacsLoader().load(Path.of("data/USA-road-d.NY.gr")).forward().nodeCount();
 
         Random random = new Random(42L);

@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.benchmark.expb;
 
 import java.io.IOException;
@@ -24,7 +23,6 @@ import dk.dtu.routeplanner.core.model.LandmarkPreprocessingResult;
 import dk.dtu.routeplanner.core.model.SearchResult;
 
 public class BenchmarkRunner {
-
     public static void main(String[] args) throws IOException {
         DimacsLoader loader = new DimacsLoader();
 
@@ -76,7 +74,6 @@ public class BenchmarkRunner {
             System.out.println("\nRoute " + source + " -> " + target);
 
             for (int i = 0; i < algorithms.length; i++) {
-
                 long start = System.nanoTime();
 
                 SearchResult result = algorithms[i].findShortestPath(graph, source, target);
@@ -86,13 +83,11 @@ public class BenchmarkRunner {
                 validatePath(graph, source, target, result);
 
                 if (i == 0) {
-
                     expectedDistance = result.distance();
 
                     if (!Double.isFinite(expectedDistance)) {
                         throw new IllegalStateException("Generated an unreachable route");
                     }
-
                 } else if (!sameDistance(expectedDistance, result.distance())) {
                     throw new IllegalStateException(
                             names[i] + " returned incorrect distance for " + source + " -> " + target);
@@ -107,15 +102,8 @@ public class BenchmarkRunner {
                         elapsed / 1000000.0
                 );
 
-                csvLines.add(
-                        pairId + ","
-                                + names[i] + ","
-                                + source + ","
-                                + target + ","
-                                + result.distance() + ","
-                                + result.settledCounter() + ","
-                                + result.relaxedCounter()
-                );
+                csvLines.add(pairId + "," + names[i] + "," + source + "," + target + ","
+                        + result.distance() + "," + result.settledCounter() + "," + result.relaxedCounter());
             }
 
             System.out.println("All four algorithms agree.");
@@ -157,7 +145,7 @@ public class BenchmarkRunner {
         for (int i = 0; i < path.length - 1; i++) {
             int from = path[i];
             int to = path[i + 1];
-            
+
             double edgeWeight = Double.POSITIVE_INFINITY;
 
             for (int edge = graph.edgeStart(from); edge < graph.edgeEnd(from); edge++) {

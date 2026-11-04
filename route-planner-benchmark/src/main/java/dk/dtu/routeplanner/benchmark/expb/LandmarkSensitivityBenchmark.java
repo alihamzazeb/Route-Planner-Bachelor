@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.benchmark.expb;
 
 import java.io.IOException;
@@ -24,7 +23,6 @@ import dk.dtu.routeplanner.core.model.SearchResult;
 
 @State(Scope.Benchmark)
 public class LandmarkSensitivityBenchmark {
-
     @Param({"1", "2", "4", "8"})
     public int landmarkCount;
 

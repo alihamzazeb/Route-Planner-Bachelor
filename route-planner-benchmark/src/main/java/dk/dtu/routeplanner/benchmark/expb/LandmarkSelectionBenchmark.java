@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.benchmark.expb;
 
 import java.io.IOException;
@@ -25,7 +24,6 @@ import dk.dtu.routeplanner.core.loader.DimacsLoader;
 
 @State(Scope.Benchmark)
 public class LandmarkSelectionBenchmark {
-
     @Param({"random", "farthest"})
     public String selectionMethod;
 
@@ -56,9 +54,7 @@ public class LandmarkSelectionBenchmark {
                     landmarkCount,
                     BenchmarkConfig.LANDMARK_SEED
             );
-
         } else if (selectionMethod.equals("farthest")) {
-
             StraightLine straightLine = new StraightLine(loader.loadCoordinates(Path.of("data/USA-road-d.NY.co"))
             );
 
@@ -69,7 +65,6 @@ public class LandmarkSelectionBenchmark {
                             landmarkCount,
                             BenchmarkConfig.LANDMARK_SEED
                     );
-
         } else {
             throw new IllegalArgumentException("Unknown selection method: " + selectionMethod);
         }

@@ -9,10 +9,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class Workloads {
+public final class Workloads {
+    private Workloads() {}
 
     public static void savePairs(Path file, int[][] pairs) throws IOException {
-
         List<String> lines = new ArrayList<>();
         lines.add("source,target");
 
@@ -25,7 +25,6 @@ public class Workloads {
     }
 
     public static int[][] readPairs(Path file, int nodeCount, int expectedCount) throws IOException {
-
         List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
 
         if (lines.size() != expectedCount + 1 || !lines.get(0).equals("source,target")) {
@@ -36,7 +35,6 @@ public class Workloads {
         Set<String> seen = new HashSet<>();
 
         for (int i = 1; i < lines.size(); i++) {
-
             String[] values = lines.get(i).split(",", -1);
 
             if (values.length != 2) {
@@ -46,7 +44,8 @@ public class Workloads {
             int source = Integer.parseInt(values[0]);
             int target = Integer.parseInt(values[1]);
 
-            if (source < 0 || source >= nodeCount || target < 0 || target >= nodeCount || source == target|| !seen.add(source + ":" + target)) {
+            if (source < 0 || source >= nodeCount || target < 0 || target >= nodeCount
+                    || source == target || !seen.add(source + ":" + target)) {
                 throw new IllegalArgumentException("Invalid pair: " + i);
             }
 

@@ -1,10 +1,8 @@
-
 package dk.dtu.routeplanner.benchmark.expb;
 
 import java.nio.file.Path;
 
 public final class BenchmarkConfig {
-
     public static final int PAIR_COUNT = 100;
     public static final long QUERY_SEED = 42L;
 

@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.benchmark.expb;
 
 import java.nio.file.Files;
@@ -16,29 +15,28 @@ import dk.dtu.routeplanner.core.graph.StraightLine;
 import dk.dtu.routeplanner.core.loader.DimacsLoader;
 
 public class PreprocessingRunner {
-
     @SuppressWarnings("unused") // keeps the prepared objects alive
     private static volatile PreparedData keepAlive;
+
     private record PreparedData(
-        RoadNetwork network,
-        Coordinates coordinates,
-        AStar astar,
-        AStar alt
-) {}
+            RoadNetwork network,
+            Coordinates coordinates,
+            AStar astar,
+            AStar alt
+    ) {}
 
     public static void main(String[] args) throws Exception {
-
         int trial = Integer.parseInt(args[0]);
         DimacsLoader loader = new DimacsLoader();
 
         // time the load graph
         long start = System.nanoTime();
-        RoadNetwork network =loader.load(Path.of("data/USA-road-d.NY.gr"));
+        RoadNetwork network = loader.load(Path.of("data/USA-road-d.NY.gr"));
         double graphMs = ms(start);
 
         // time the load coordinates
         start = System.nanoTime();
-        Coordinates coordinates =loader.loadCoordinates(Path.of("data/USA-road-d.NY.co"));
+        Coordinates coordinates = loader.loadCoordinates(Path.of("data/USA-road-d.NY.co"));
         double coordinatesMs = ms(start);
 
         // time the preparation for A*
@@ -59,10 +57,9 @@ public class PreprocessingRunner {
 
         // time the preprocess of ALT
         start = System.nanoTime();
-        var preprocessing =new LandmarkPreprocessor(network).preprocess(landmarks);
+        var preprocessing = new LandmarkPreprocessor(network).preprocess(landmarks);
         AStar alt = new AStar(new LandmarkHeuristic(preprocessing));
         double altMs = ms(start);
-
 
         // memory stuff
         int nodes = network.forward().nodeCount();
@@ -87,7 +84,6 @@ public class PreprocessingRunner {
                 coordinateBytes / 1048576.0,
                 altBytes / 1048576.0
         );
-
 
         // the prepared data
         keepAlive = new PreparedData(network, coordinates, astar, alt);
