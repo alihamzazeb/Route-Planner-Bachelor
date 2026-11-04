@@ -99,6 +99,10 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
 
         @Override
         public int compareTo(Entry other) {
+            return compare(node, dist, hops, exactDist, other);
+        }
+
+        static int compare(int node, double dist, int hops, BigDecimal exactDist, Entry other) {
             int comparison;
             if (exactDist == null && other.exactDist == null) {
                 comparison = Double.compare(dist, other.dist);
@@ -107,7 +111,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             } else if (other.exactDist == null && other.dist == Double.POSITIVE_INFINITY) {
                 comparison = -1;
             } else {
-                comparison = exactValue().compareTo(other.exactValue());
+                comparison = exactValue(dist, exactDist).compareTo(exactValue(other.dist, other.exactDist));
             }
             if (comparison == 0) {
                 comparison = Integer.compare(hops, other.hops);
@@ -118,7 +122,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             return comparison;
         }
 
-        private BigDecimal exactValue() {
+        private static BigDecimal exactValue(double dist, BigDecimal exactDist) {
             return exactDist == null ? new BigDecimal(dist) : exactDist;
         }
     }
@@ -370,8 +374,20 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
         private boolean hasForestParent(int node, VertexSet visited) {
             // the prev edge only counts if it still matches the distances
             int parent = prev[node];
-            return parent >= 0 && visited.contains(parent)
-                    && extend(parent, prevEdge[node]).compareTo(entry(node)) == 0;
+            if (parent < 0 || !visited.contains(parent)) {
+                return false;
+            }
+            Entry predecessor = entry(parent);
+            Entry current = entry(node);
+            if (predecessor.hops() + 1 != current.hops()) {
+                return false;
+            }
+            int edge = prevEdge[node];
+            if (predecessor.exactDist() != null) {
+                return predecessor.exactDist().add(graph.exactEdgeWeight(edge))
+                        .compareTo(current.exactDist()) == 0;
+            }
+            return Double.compare(predecessor.dist() + graph.edgeWeight(edge), current.dist()) == 0;
         }
 
         private BoundedResult baseCase(Entry bound, List<Integer> sources, VertexSet completed) {
@@ -413,27 +429,26 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             return labels[node] == null ? INFINITY : labels[node];
         }
 
-        private Entry extend(int node, int edge) {
+        private boolean relax(int node, int edge, Entry bound) {
+            relaxedCounter++;
+            int neighbour = graph.edgeTarget(edge);
             Entry parent = entry(node);
             BigDecimal exact = parent.exactDist() == null ? null
                     : parent.exactDist().add(graph.exactEdgeWeight(edge));
             double distance = exact == null ? parent.dist() + graph.edgeWeight(edge) : exact.doubleValue();
-            return new Entry(graph.edgeTarget(edge), distance, parent.hops() + 1, exact);
-        }
-
-        private boolean relax(int node, int edge, Entry bound) {
-            relaxedCounter++;
-            int neighbour = graph.edgeTarget(edge);
-            Entry candidate = extend(node, edge);
-            if (candidate.compareTo(bound) >= 0) {
+            int hops = parent.hops() + 1;
+            if (Entry.compare(neighbour, distance, hops, exact, bound) >= 0) {
                 return false;
             }
-            int comparison = candidate.compareTo(entry(neighbour));
+            int comparison = Entry.compare(neighbour, distance, hops, exact, entry(neighbour));
             // Equality is required to reuse lower-level relaxations (Remark 3.4).
             if (comparison > 0 || (comparison == 0 && node > prev[neighbour])) {
                 return false;
             }
-            labels[neighbour] = candidate;
+            // Equal labels still propagate, but their immutable queue key can be reused.
+            if (comparison < 0) {
+                labels[neighbour] = new Entry(neighbour, distance, hops, exact);
+            }
             prev[neighbour] = node;
             prevEdge[neighbour] = edge;
             return true;
