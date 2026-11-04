@@ -1,3 +1,11 @@
+:root {
+    --panel: #18212f;
+    --surface: #293447;
+    --border: #465469;
+    --accent: #60a5fa;
+    --muted: #aeb9c9;
+}
+
 * {
     box-sizing: border-box;
 }
@@ -16,7 +24,7 @@ html, body {
 }
 
 .sidebar {
-    background: #18212f;
+    background: var(--panel);
     color: white;
     padding: 28px 22px;
     display: flex;
@@ -30,7 +38,8 @@ html, body {
     font-size: 24px;
 }
 
-.brand p {
+.brand p,
+#comparison-route {
     margin: 8px 0 0;
     font-size: 13px;
     color: #9aa8bd;
@@ -51,7 +60,7 @@ html, body {
     margin: 0;
     font-size: 13px;
     line-height: 1.6;
-    color: #aeb9c9;
+    color: var(--muted);
 }
 
 #route-form {
@@ -75,8 +84,8 @@ html, body {
 .form-group select {
     width: 100%;
     padding: 13px;
-    background: #293447;
-    border: 1px solid #465469;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 8px;
     color: white;
     font-size: 14px;
@@ -85,7 +94,7 @@ html, body {
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
-    border-color: #60a5fa;
+    border-color: var(--accent);
 }
 
 .form-group input::placeholder {
@@ -113,9 +122,9 @@ html, body {
 }
 
 .compare-button {
-    background: #293447;
+    background: var(--surface);
     color: #e2e8f0;
-    border: 1px solid #60a5fa;
+    border: 1px solid var(--accent);
     font-weight: 600;
 }
 
@@ -132,11 +141,11 @@ html, body {
 .clear-button {
     background: transparent;
     color: #cbd5e1;
-    border: 1px solid #465469;
+    border: 1px solid var(--border);
 }
 
 .clear-button:hover {
-    background: #293447;
+    background: var(--surface);
 }
 
 #route-message {
@@ -146,7 +155,8 @@ html, body {
     color: #cbd5e1;
 }
 
-#route-message.error {
+#route-message.error,
+#comparison-message.error {
     color: #fca5a5;
 }
 
@@ -184,8 +194,21 @@ html, body {
     box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
     font-size: 14px;
     font-weight: 600;
-    color: #18212f;
+    color: var(--panel);
     pointer-events: none;
+}
+
+#map-message {
+    position: absolute;
+    bottom: 36px;
+    left: 20px;
+    right: 20px;
+    margin: 0;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--panel);
+    color: white;
+    font-size: 13px;
 }
 
 .route-results {
@@ -201,7 +224,7 @@ html, body {
 
 .result-distance,
 .result-item {
-    background: #293447;
+    background: var(--surface);
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -215,7 +238,7 @@ html, body {
 .result-distance span,
 .result-item span {
     font-size: 12px;
-    color: #aeb9c9;
+    color: var(--muted);
 }
 
 .result-distance strong {
@@ -248,7 +271,7 @@ html, body {
 }
 
 .comparison-inner {
-    background: #18212f;
+    background: var(--panel);
     border: 1px solid #354155;
     border-radius: 12px;
     padding: 28px;
@@ -264,7 +287,7 @@ html, body {
 
 .comparison-label {
     margin: 0 0 10px;
-    color: #60a5fa;
+    color: var(--accent);
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 1.3px;
@@ -276,16 +299,10 @@ html, body {
     font-size: 24px;
 }
 
-#comparison-route {
-    margin: 8px 0 0;
-    color: #9aa8bd;
-    font-size: 13px;
-}
-
 .comparison-close {
     background: transparent;
-    color: #aeb9c9;
-    border: 1px solid #465469;
+    color: var(--muted);
+    border: 1px solid var(--border);
     border-radius: 7px;
     padding: 9px 14px;
     font-size: 13px;
@@ -293,13 +310,13 @@ html, body {
 }
 
 .comparison-close:hover {
-    background: #293447;
+    background: var(--surface);
     color: white;
 }
 
 .comparison-description {
     margin: 20px 0 14px;
-    color: #aeb9c9;
+    color: var(--muted);
     font-size: 13px;
     line-height: 1.5;
 }
@@ -339,18 +356,12 @@ html, body {
     font-weight: 600;
 }
 
-.comparison-table th:nth-child(2),
-.comparison-table td:nth-child(2) {
+.comparison-chart {
     width: 29%;
 }
 
 .single-source-table {
     min-width: 560px;
-}
-
-.single-source-table th:nth-child(2),
-.single-source-table td:nth-child(2) {
-    width: auto;
 }
 
 .comparison-table tbody tr:last-child td {
@@ -376,7 +387,7 @@ html, body {
 .comparison-fill {
     width: 0;
     height: 100%;
-    background: #60a5fa;
+    background: var(--accent);
     border-radius: 8px;
     transition: width 250ms ease;
 }
@@ -385,10 +396,6 @@ html, body {
     margin: 18px 0 0;
     font-size: 13px;
     color: #cbd5e1;
-}
-
-#comparison-message.error {
-    color: #fca5a5;
 }
 
 #comparison-message:empty {

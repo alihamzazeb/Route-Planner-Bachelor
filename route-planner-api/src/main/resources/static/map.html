@@ -10,13 +10,12 @@
 </head>
 
 <body>
-    <!-- data-search-type: only shown for that search type -->
     <div class="app">
         <aside class="sidebar">
-            <div class="brand">
+            <header class="brand">
                 <h1>Route Planner</h1>
                 <p>Shortest Path Visualization</p>
-            </div>
+            </header>
 
             <section class="panel">
                 <h2 data-search-type="point-to-point">Plan a Route</h2>
@@ -24,7 +23,7 @@
                 <p data-search-type="point-to-point">Choose a starting node, destination, and routing algorithm.</p>
                 <p data-search-type="single-source" hidden>Compute shortest-path distances from one source to every reachable node. There is no destination.</p>
 
-                <form id="route-form">
+                <form id="route-form" aria-label="Route search" aria-describedby="route-message">
                     <div class="form-group">
                         <label for="search-type">Search type</label>
                         <select id="search-type">
@@ -65,7 +64,7 @@
                         <span data-search-type="point-to-point">Find Route</span>
                         <span data-search-type="single-source" hidden>Compute All Distances</span>
                     </button>
-                    <button type="button" id="compare-all" class="compare-button">
+                    <button type="button" id="compare-all" class="compare-button" aria-controls="comparison-section">
                         <span data-search-type="point-to-point">Compare All Algorithms</span>
                         <span data-search-type="single-source" hidden>Compare Dijkstra and Duan</span>
                     </button>
@@ -122,13 +121,14 @@
                 </div>
             </section>
 
-            <div class="sidebar-footer">DTU Bachelor Project (s235479)</div>
+            <footer class="sidebar-footer">DTU Bachelor Project (s235479)</footer>
         </aside>
 
         <main class="workspace">
             <div class="map-container">
-                <div id="map"></div>
+                <div id="map" role="region" aria-label="New York road network map"></div>
                 <div class="map-header">New York Road Network</div>
+                <p id="map-message" role="status" hidden>Map resources could not be loaded. Search results are still available.</p>
             </div>
 
             <section id="comparison-section" class="comparison-section" aria-labelledby="comparison-title" hidden>
@@ -143,28 +143,28 @@
                             </h2>
                             <p id="comparison-route"></p>
                         </div>
-                        <button type="button" id="hide-comparison" class="comparison-close">Hide</button>
+                        <button type="button" id="hide-comparison" class="comparison-close" aria-label="Hide algorithm comparison">Hide</button>
                     </div>
 
                     <p class="comparison-description" data-search-type="point-to-point">Search work and query time for all four algorithms on the same route.</p>
                     <p class="comparison-description" data-search-type="single-source" hidden>Both algorithms compute all distances. Duan's graph preparation runs once at startup and is not included in the time. Duan's edge count refers to its internal graph. These are individual runs, not benchmark averages.</p>
 
                     <div class="comparison-table-container">
-                        <table class="comparison-table" data-search-type="point-to-point">
+                        <table class="comparison-table" data-search-type="point-to-point" aria-label="Point-to-point algorithm comparison">
                             <thead>
                                 <tr>
-                                    <th>Algorithm</th>
-                                    <th>Relative settled nodes</th>
-                                    <th>Settled nodes</th>
-                                    <th>Relaxed edges</th>
-                                    <th>Time</th>
-                                    <th>Distance</th>
+                                    <th scope="col">Algorithm</th>
+                                    <th scope="col" class="comparison-chart">Relative settled nodes</th>
+                                    <th scope="col">Settled nodes</th>
+                                    <th scope="col">Relaxed edges</th>
+                                    <th scope="col">Time</th>
+                                    <th scope="col">Distance</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr data-algorithm="dijkstra">
                                     <td>Dijkstra</td>
-                                    <td><div class="comparison-track"><div class="comparison-fill"></div></div></td>
+                                    <td><div class="comparison-track" aria-hidden="true"><div class="comparison-fill"></div></div></td>
                                     <td data-field="settled">-</td>
                                     <td data-field="relaxed">-</td>
                                     <td data-field="time">-</td>
@@ -172,7 +172,7 @@
                                 </tr>
                                 <tr data-algorithm="bidirectional">
                                     <td>Bidirectional Dijkstra</td>
-                                    <td><div class="comparison-track"><div class="comparison-fill"></div></div></td>
+                                    <td><div class="comparison-track" aria-hidden="true"><div class="comparison-fill"></div></div></td>
                                     <td data-field="settled">-</td>
                                     <td data-field="relaxed">-</td>
                                     <td data-field="time">-</td>
@@ -180,7 +180,7 @@
                                 </tr>
                                 <tr data-algorithm="astar">
                                     <td>A*</td>
-                                    <td><div class="comparison-track"><div class="comparison-fill"></div></div></td>
+                                    <td><div class="comparison-track" aria-hidden="true"><div class="comparison-fill"></div></div></td>
                                     <td data-field="settled">-</td>
                                     <td data-field="relaxed">-</td>
                                     <td data-field="time">-</td>
@@ -188,7 +188,7 @@
                                 </tr>
                                 <tr data-algorithm="alt">
                                     <td>ALT</td>
-                                    <td><div class="comparison-track"><div class="comparison-fill"></div></div></td>
+                                    <td><div class="comparison-track" aria-hidden="true"><div class="comparison-fill"></div></div></td>
                                     <td data-field="settled">-</td>
                                     <td data-field="relaxed">-</td>
                                     <td data-field="time">-</td>
@@ -196,13 +196,13 @@
                                 </tr>
                             </tbody>
                         </table>
-                        <table class="comparison-table single-source-table" data-search-type="single-source" hidden>
+                        <table class="comparison-table single-source-table" data-search-type="single-source" aria-label="Single-source algorithm comparison" hidden>
                             <thead>
                                 <tr>
-                                    <th>Algorithm</th>
-                                    <th>Settled / completed nodes</th>
-                                    <th>Relaxed edges</th>
-                                    <th>Computation time</th>
+                                    <th scope="col">Algorithm</th>
+                                    <th scope="col">Settled / completed nodes</th>
+                                    <th scope="col">Relaxed edges</th>
+                                    <th scope="col">Computation time</th>
                                 </tr>
                             </thead>
                             <tbody>
