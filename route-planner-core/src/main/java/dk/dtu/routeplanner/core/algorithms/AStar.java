@@ -55,6 +55,8 @@ public class AStar implements PointToPointAlgorithm{
             while (!queue.isEmpty()) {
                 Entry entry = queue.poll();
                 int node = entry.node();
+                // We do not reopen settled nodes, so the heuristic must be consistent
+                // on paths that can reach the target.
                 if (settled[node]) {
                     continue;
                 }

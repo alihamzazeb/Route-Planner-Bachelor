@@ -24,7 +24,7 @@ public class Dijkstra implements PointToPointAlgorithm, SingleSourceAlgorithm {
         boolean[] settled = new boolean[graph.nodeCount()];
         
         PriorityQueue<Entry> queue = 
-            new PriorityQueue<>(Comparator.comparingDouble(Entry::dist));// we compare the distance when we poll
+            new PriorityQueue<>(Comparator.comparingDouble(Entry::dist));
         
         queue.add(new Entry(source, 0));
 
@@ -54,7 +54,6 @@ public class Dijkstra implements PointToPointAlgorithm, SingleSourceAlgorithm {
         return new SingleSourceResult(settledCounter, relaxedCounter, dist);
     }
 
-    // to store each node with its distance together
     private record Entry(int node, double dist){}
 
 
@@ -75,9 +74,9 @@ public class Dijkstra implements PointToPointAlgorithm, SingleSourceAlgorithm {
         boolean[] settled = new boolean[graph.nodeCount()];
         
         PriorityQueue<Entry> queue = 
-            new PriorityQueue<>(Comparator.comparingDouble(Entry::dist));// we compare the distance when we poll. so smallest first
+            new PriorityQueue<>(Comparator.comparingDouble(Entry::dist));
         
-        queue.add(new Entry(source, 0)); // add the source node to the queue
+        queue.add(new Entry(source, 0));
 
         while (!queue.isEmpty()) {
             Entry entry = queue.poll();
@@ -88,7 +87,6 @@ public class Dijkstra implements PointToPointAlgorithm, SingleSourceAlgorithm {
                 continue;
             }
 
-            // mark it as settled
             settled[node]=true;
             settledCounter++;
 
@@ -96,9 +94,7 @@ public class Dijkstra implements PointToPointAlgorithm, SingleSourceAlgorithm {
                 break;
             }
 
-            // checking current nodes outgoing edges
             for (int i = graph.edgeStart(node); i < graph.edgeEnd(node); i++) {
-                // which node the edge goes to and its weight
                 int neighbour = graph.edgeTarget(i);
                 double weight = graph.edgeWeight(i);
 
@@ -106,7 +102,6 @@ public class Dijkstra implements PointToPointAlgorithm, SingleSourceAlgorithm {
                 
                 relaxedCounter++;
 
-                // if the newDist is smaller than the current distance then update and also store which node it came from in the prev array
                 if (dist[neighbour]>newDist) {
                     dist[neighbour] = newDist;
                     prev[neighbour] = node;
@@ -121,7 +116,6 @@ public class Dijkstra implements PointToPointAlgorithm, SingleSourceAlgorithm {
             return new SearchResult(Double.POSITIVE_INFINITY, new int[0], settledCounter, relaxedCounter);
         }
 
-        // making the path
         while (!(nodePointer==source)) {
             path.add(nodePointer);
 
@@ -130,7 +124,6 @@ public class Dijkstra implements PointToPointAlgorithm, SingleSourceAlgorithm {
         // we add the source node to the path seperately because the while stops when nodepointer==source
         path.add(source);
 
-        //reverse the path
         Collections.reverse(path);
         int[] pathArray = path.stream().mapToInt(Integer::intValue).toArray();
 

@@ -105,7 +105,7 @@ class DuanQueueTest {
         }
         queue.batchPrepend(List.of(new Entry(0, 1, 1), new Entry(1, 2, 1),
                 new Entry(2, 3, 1), new Entry(3, 4, 1), new Entry(4, 5, 1), new Entry(5, 6, 1)));
-        // Leave both block sequences nonempty when clearing the reusable index.
+        // Both block lists should still contain items when clear() is called.
         queue.pull();
         queue.clear();
         assertTrue(queue.isEmpty());

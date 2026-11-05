@@ -67,11 +67,9 @@ public class StraightLine {
         return straightLine;
     }
 
-    // calculate c limit
+    // Choose c so c * distance(u,v) <= weight(u,v) for every edge.
+    // The triangle inequality then makes the heuristic consistent.
     public double smallestLimit(Graph graph) {
-        /*
-         * check all node pairs and see if the straightline is smaller or equal to the actual distance
-         */
         double smallest = Double.MAX_VALUE;
 
         for (int u = 0; u < graph.nodeCount(); u++) {

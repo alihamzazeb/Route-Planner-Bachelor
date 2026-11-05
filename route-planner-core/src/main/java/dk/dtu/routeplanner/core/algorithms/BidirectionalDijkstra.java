@@ -35,12 +35,11 @@ public class BidirectionalDijkstra implements PointToPointAlgorithm {
             throw new IllegalArgumentException("Invalid source or target node");
         }
         if (source == target) {
-            return new SearchResult(0, new int[]{source}, 1, 0); // we already know the answer so we just give it right away
+            return new SearchResult(0, new int[]{source}, 1, 0);
         }
 
         double[] forwardDist = new double[n];
         double[] backwardDist = new double[n];
-        // change to infinity because javas default is 0 and zero in our graph actually means a node
         Arrays.fill(forwardDist, Double.POSITIVE_INFINITY); 
         Arrays.fill(backwardDist, Double.POSITIVE_INFINITY);
         forwardDist[source] = 0;
@@ -50,7 +49,7 @@ public class BidirectionalDijkstra implements PointToPointAlgorithm {
         int[] forwardPrev = new int[n]; 
         int[] backwardNext = new int[n];
 
-        // change to -1 because javas default is 0 and zero in our graph actually means a node. so default it would mean that we can reach all node from 0
+        // Use -1 because 0 is a valid node ID.
         Arrays.fill(forwardPrev, -1);
         Arrays.fill(backwardNext, -1);
 
@@ -78,7 +77,7 @@ public class BidirectionalDijkstra implements PointToPointAlgorithm {
                 break;
             }
 
-            // This bound is essential. Stopping at the first meeting is wrong.
+            // The first meeting can give a longer route, so we check this bound before stopping.
             double forwardMinimum = forwardQueue.peek().distance();
             double backwardMinimum = backwardQueue.peek().distance();
             if (forwardMinimum + backwardMinimum >= bestDistance) {
@@ -102,7 +101,7 @@ public class BidirectionalDijkstra implements PointToPointAlgorithm {
                         forwardQueue.add(new Entry(v, distance));
                     }
 
-                    // Two tentative paths already form a complete source-target route.
+                    // Both searches have reached v, so we have a route through it.
                     if (forwardDist[v] < Double.POSITIVE_INFINITY && backwardDist[v] < Double.POSITIVE_INFINITY) {
                         double route = forwardDist[v] + backwardDist[v];
                         if (route < bestDistance) {

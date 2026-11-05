@@ -6,6 +6,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import org.junit.jupiter.api.Test;
@@ -119,6 +120,63 @@ public class DimacsLoaderTest {
         assertEquals(41085396, coordinates.latitude()[0]);
         assertEquals(41086098, coordinates.latitude()[1]);
         assertEquals(41048796, coordinates.latitude()[2]);
+    }
+
+    @Test
+    void acceptsWhitespaceAndEmptyGraphsWithoutLosingZeroValues() throws IOException {
+        Path file = tempDir.resolve("whitespace.gr");
+        Files.writeString(file, "\n  c example\n  p\tsp  2  1  \n  a  1\t2 0\n");
+        RoadNetwork network = new DimacsLoader().load(file);
+        assertEquals(1, network.forward().edgeEnd(1));
+        assertEquals(1, network.forward().edgeTarget(0));
+        assertEquals(0, network.forward().edgeWeight(0));
+        assertReverseMatchesForward(network);
+
+        Path coordinatesFile = tempDir.resolve("whitespace.co");
+        Files.writeString(coordinatesFile, "  p\taux sp  co 2\n v 2  0\t0\n v\t1 -10 20\n");
+        Coordinates coordinates = new DimacsLoader().loadCoordinates(coordinatesFile);
+        assertEquals(-10, coordinates.longitude()[0]);
+        assertEquals(20, coordinates.latitude()[0]);
+        assertEquals(0, coordinates.longitude()[1]);
+        assertEquals(0, coordinates.latitude()[1]);
+
+        Files.writeString(file, "p sp 0 0\n");
+        assertEquals(0, new DimacsLoader().load(file).forward().nodeCount());
+        Files.writeString(coordinatesFile, "p aux sp co 0\n");
+        assertEquals(0, new DimacsLoader().loadCoordinates(coordinatesFile).latitude().length);
+    }
+
+    @Test
+    void rejectsMissingHeadersAndIncorrectArcCounts() throws IOException {
+        String[] invalid = {
+                "c no header\n",
+                "p sp 2 2\na 1 2 7\n", // truncated: used to create an extra 0 -> 0 arc
+                "p sp 2 0\na 1 2 7\n",
+                "p sp -1 0\n",
+                "p sp 2 -1\n"
+        };
+        Path file = tempDir.resolve("invalid.gr");
+        for (String input : invalid) {
+            Files.writeString(file, input);
+            assertThrows(IOException.class, () -> new DimacsLoader().load(file), input);
+        }
+    }
+
+    @Test
+    void rejectsMissingDuplicateAndInvalidCoordinateRecords() throws IOException {
+        String[] invalid = {
+                "c no header\n",
+                "p aux sp co 2\nv 1 10 20\n",
+                "p aux sp co 2\nv 1 10 20\nv 1 30 40\n",
+                "p aux sp co -1\n",
+                "p aux sp co 1\nv 0 10 20\n",
+                "p aux sp co 1\nv 2 10 20\n"
+        };
+        Path file = tempDir.resolve("invalid.co");
+        for (String input : invalid) {
+            Files.writeString(file, input);
+            assertThrows(IOException.class, () -> new DimacsLoader().loadCoordinates(file), input);
+        }
     }
 
     @Test

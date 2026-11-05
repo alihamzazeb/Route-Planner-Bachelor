@@ -90,7 +90,7 @@ class DuanTest {
 
     @Test
     void finishesWhenTheWorkLimitEqualsTheNodeCount() {
-        // Regression: an empty queue must return the full bound, even at the work limit.
+        // An empty queue means the search finished, even if it also reached the work limit.
         Graph graph = graph(16,
                 new Edge(12, 7, 442), new Edge(0, 12, 437), new Edge(5, 3, 977), new Edge(12, 10, 631),
                 new Edge(10, 1, 378), new Edge(10, 4, 411), new Edge(9, 11, 233), new Edge(2, 9, 84),

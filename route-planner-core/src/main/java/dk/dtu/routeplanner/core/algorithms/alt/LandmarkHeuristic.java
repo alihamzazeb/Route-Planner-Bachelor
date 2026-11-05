@@ -18,18 +18,18 @@ public class LandmarkHeuristic implements Heuristic {
 
         for (int i = 0; i < data.landmarkCount(); i++) {
 
-            // Calculate the lower bounds using landmark i
             double landmarkToTarget = data.landmarkFromDistance(i, target);
             double landmarkToNode = data.landmarkFromDistance(i, node);
             double nodeToLandmark = data.landmarkToDistance(i, node);
             double targetToLandmark = data.landmarkToDistance(i, target);
 
+            // Forward bound: d(L,target) - d(L,node). Skip infinite distances.
             if (Double.isFinite(landmarkToTarget) && Double.isFinite(landmarkToNode)) {
                 double lowerBound = landmarkToTarget - landmarkToNode;
                 best = Math.max(best, lowerBound);
             }
 
-            // reverse graph stuff
+            // Reverse bound: d(node,L) - d(target,L).
             if (Double.isFinite(nodeToLandmark) && Double.isFinite(targetToLandmark)) {
                 double lowerBound = nodeToLandmark - targetToLandmark;
                 best = Math.max(best, lowerBound);

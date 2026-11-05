@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class DuanNumericTest {
     @Test
     void keepsExactCostsWhenDoubleSumsRound() {
-        // Decimal ties, an absorbed improvement, accumulated small edges, and tied outputs.
+        // Check small differences that can disappear when path costs are added as doubles.
         List<Graph> cases = List.of(
                 graph(4, new Edge(0, 1, 0.1), new Edge(0, 2, Math.nextUp(0.1)),
                         new Edge(1, 2, 0), new Edge(2, 3, 0.1)),

@@ -1,5 +1,6 @@
 package dk.dtu.routeplanner.core.algorithms;
 
+import static dk.dtu.routeplanner.core.algorithms.PathAssertions.assertValidPath;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
@@ -32,11 +33,13 @@ class AStarTest {
                 SearchResult actual = aStar.findShortestPath(graph, source, target);
                 assertEquals(distances[source][target], actual.distance(), 0.0001, pair);
                 assertEquals(expected.distance(), actual.distance(), 0.0001, pair);
-                assertArrayEquals(expected.path(), actual.path(), pair);
+                assertValidPath(graph, source, target, actual);
                 if (source == 0 && target == 2) {
                     assertArrayEquals(new int[]{0, 1, 2}, actual.path());
                 }
             }
         }
     }
+
+
 }

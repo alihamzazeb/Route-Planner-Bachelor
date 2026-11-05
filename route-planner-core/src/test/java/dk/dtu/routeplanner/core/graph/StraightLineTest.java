@@ -55,6 +55,14 @@ public class StraightLineTest {
         assertEquals(1.111, c, 0.001);
     }
 
+
+    @Test
+    void aZeroWeightEdgeWithGeometricLengthForcesZeroScale() {
+        StraightLine line = smallCoordinates();
+        Graph graph = new CsrGraph(new int[]{0, 1, 2, 2}, new int[]{1, 2}, new double[]{0, 5});
+        assertEquals(0, line.smallestLimit(graph));
+    }
+
     @Test
     void newYorkScalingMatchesTheKnownLimitAndOnlyTinyRoadsFallBelowOne() throws IOException {
         assumeTrue(Files.isRegularFile(NEW_YORK_GRAPH_PATH), "New York graph not available");

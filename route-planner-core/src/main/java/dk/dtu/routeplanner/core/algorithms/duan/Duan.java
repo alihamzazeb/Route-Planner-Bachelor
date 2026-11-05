@@ -210,7 +210,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             Arrays.fill(position, -1);
             for (int remaining = graph.nodeCount(); remaining > 0 && internal >= 0; remaining--) {
                 int original = graph.internalToOriginal[internal];
-                // A transformed path can project to a zero-cost cycle. Erase it.
+                // Mapping the copies back can leave a zero-cost cycle in the path.
                 if (position[original] >= 0) {
                     while (path.size() > position[original] + 1) {
                         position[path.removeLast()] = -1;
@@ -443,11 +443,11 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
                 return false;
             }
             int comparison = Entry.compare(neighbour, distance, hops, exact, entry(neighbour));
-            // Equality is required to reuse lower-level relaxations (Remark 3.4).
+            // Higher levels need to reuse edges already relaxed below, so we allow equality (Remark 3.4).
             if (comparison > 0 || (comparison == 0 && node > prev[neighbour])) {
                 return false;
             }
-            // Equal labels still propagate, but their immutable queue key can be reused.
+            // If the label is unchanged, we can reuse the same Entry.
             if (comparison < 0) {
                 labels[neighbour] = new Entry(neighbour, distance, hops, exact);
             }
@@ -457,7 +457,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
         }
     }
 
-    // Each recursion level owns its scratch sets so child calls cannot clear their parent's state.
+    // Each level needs its own sets so a recursive call does not clear the parent's work.
     private static class Workspace {
         final VertexSet completed;
         final VertexSet visited;
@@ -476,7 +476,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
         }
     }
 
-    // Constant-time membership; clearing visits only the vertices actually added.
+    // present gives O(1) lookup. Only nodes in values need clearing.
     private static class VertexSet {
         final List<Integer> values = new ArrayList<>();
         private final boolean[] present;

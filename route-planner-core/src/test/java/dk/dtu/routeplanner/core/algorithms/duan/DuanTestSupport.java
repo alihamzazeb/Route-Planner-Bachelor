@@ -83,7 +83,7 @@ final class DuanTestSupport {
         assertEquals(0, expected.compareTo(cost), "Path must have the exact shortest cost");
     }
 
-    // An independent Bellman–Ford reference: no BMSSP code or rounded intermediate sums.
+    // Bellman-Ford with exact sums, used to check Duan's results independently.
     static BigDecimal[] bellmanFord(Graph graph, int source) {
         int n = graph.nodeCount();
         BigDecimal[] weights = new BigDecimal[graph.edgeEnd(n - 1)];

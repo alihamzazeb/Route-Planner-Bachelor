@@ -6,6 +6,7 @@ public class RoadNetwork {
     private final Graph forward;
     private final Graph reverse;
 
+    // reverse must contain the same edges with their directions swapped.
     public RoadNetwork(Graph forward, Graph reverse) {
         this.forward = Objects.requireNonNull(forward);
         this.reverse = Objects.requireNonNull(reverse);

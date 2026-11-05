@@ -15,23 +15,24 @@ import dk.dtu.routeplanner.core.graph.RoadNetwork;
 public class DimacsLoader {
 
     public RoadNetwork load(Path filePath) throws IOException {
-        List<String> lines = Files.readAllLines(filePath); // read all lines from the file
+        List<String> lines = Files.readAllLines(filePath);
 
-        // the files already has a line where it says the total number of nodes and edges.
-        // we just find the line which starst with "p" and then split it so we can save each value in its variable
-        int nodeCount = 0;
+        int nodeCount = -1;
         int arcCount = 0;
 
         for (String line : lines) {
+            line = line.strip();
             if (line.startsWith("p")) {
-                String[] parts = line.split(" ");
+                String[] parts = line.split("\\s+");
                 nodeCount = Integer.parseInt(parts[2]);
                 arcCount = Integer.parseInt(parts[3]);
-                break; // once we have found the "p" then there is no need to go through all lines becuase there is only one "p"
+                break;
             }
         }
+        if (nodeCount < 0 || arcCount < 0) {
+            throw new IOException("Missing graph header or invalid graph size");
+        }
 
-        // we need to store all arcs so we make list for each "a" in the file
         int[] sources = new int[arcCount];
         int[] targets = new int[arcCount];
         double[] weights = new double[arcCount];
@@ -39,8 +40,12 @@ public class DimacsLoader {
         int arcsRead = 0;
 
         for (String line : lines) {
+            line = line.strip();
             if (line.startsWith("a")) {
-                String[] parts = line.split(" ");
+                if (arcsRead >= arcCount) {
+                    throw new IOException("More arcs than declared in the header");
+                }
+                String[] parts = line.split("\\s+");
 
                 sources[arcsRead] = Integer.parseInt(parts[1]) - 1; // the files start from 1 but arrays start from 0
                 targets[arcsRead] = Integer.parseInt(parts[2]) - 1;
@@ -49,13 +54,16 @@ public class DimacsLoader {
                 arcsRead++;
             }
         }
+        if (arcsRead != arcCount) {
+            throw new IOException("Fewer arcs than declared in the header");
+        }
 
         Graph forward = buildCsr(nodeCount, sources, targets, weights);
 
         // reverse
         Graph reverse = buildCsr(nodeCount, targets, sources, weights);
 
-        return new RoadNetwork(forward, reverse); // both graphs are created and they explain the same road network
+        return new RoadNetwork(forward, reverse);
     }
 
     private static Graph buildCsr(
@@ -68,8 +76,7 @@ public class DimacsLoader {
         int edgeCount = sources.length;
 
         // we count how many arcs each node has. so we know how many slots we need to allocate for each node in the graph.
-        // we can do this by iterating through the sources array and incrementing the count for each source node.
-        int[] counts = new int[nodeCount]; // stores how many edges each node has
+        int[] counts = new int[nodeCount];
 
         for (int source : sources) {
             counts[source]++;
@@ -100,30 +107,45 @@ public class DimacsLoader {
 
     public Coordinates loadCoordinates(Path filePath) throws IOException {
 
-        List<String> lines = Files.readAllLines(filePath); // read all lines from the file
+        List<String> lines = Files.readAllLines(filePath);
 
-        int nodeCount = 0;
+        int nodeCount = -1;
 
         for (String line : lines) {
+            line = line.strip();
             if (line.startsWith("p")) {
-                String[] parts = line.split(" ");
+                String[] parts = line.split("\\s+");
                 nodeCount = Integer.parseInt(parts[4]);
                 break;
             }
         }
+        if (nodeCount < 0) {
+            throw new IOException("Missing coordinate header or invalid node count");
+        }
 
         int[] longitude = new int[nodeCount];
         int[] latitude = new int[nodeCount];
+        boolean[] seen = new boolean[nodeCount];
+        int nodesRead = 0;
 
         for (String line : lines) {
+            line = line.strip();
             if (line.startsWith("v")) {
-                String[] parts = line.split(" ");
+                String[] parts = line.split("\\s+");
 
                 int node = Integer.parseInt(parts[1]) - 1;
+                if (node < 0 || node >= nodeCount || seen[node]) {
+                    throw new IOException("Invalid or duplicate coordinate node ID");
+                }
 
                 longitude[node] = Integer.parseInt(parts[2]);
                 latitude[node] = Integer.parseInt(parts[3]);
+                seen[node] = true;
+                nodesRead++;
             }
+        }
+        if (nodesRead != nodeCount) {
+            throw new IOException("Missing coordinates for one or more nodes");
         }
 
         return new Coordinates(longitude, latitude);

@@ -191,6 +191,24 @@ class ALTTest {
     }
 
     @Test
+    void skipsInfiniteLandmarkTermsOnADirectedDeadEnd() {
+        // 2 cannot reach landmark 3. Dropping that bound makes h inconsistent
+        // across the zero-cost edge 0 -> 2, while the route to 1 remains valid.
+        Graph forward = new CsrGraph(new int[]{0, 2, 3, 3, 3},
+                new int[]{1, 2, 3}, new double[]{1, 0, 10});
+        Graph reverse = new CsrGraph(new int[]{0, 0, 1, 2, 3},
+                new int[]{0, 0, 1}, new double[]{1, 0, 10});
+        LandmarkHeuristic heuristic = new LandmarkHeuristic(
+                new LandmarkPreprocessor(new RoadNetwork(forward, reverse)).preprocess(new int[]{3}));
+
+        assertEquals(1, heuristic.estimate(0, 1));
+        assertEquals(0, heuristic.estimate(2, 1));
+        SearchResult result = new AStar(heuristic).findShortestPath(forward, 0, 1);
+        assertEquals(1, result.distance());
+        assertValidPath(forward, 0, 1, result);
+    }
+
+    @Test
     void altAgreesWithDijkstraOnEveryPair() {
         RoadNetwork network = smallNetwork();
         Graph graph = network.forward();

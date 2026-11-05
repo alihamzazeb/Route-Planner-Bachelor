@@ -14,24 +14,19 @@ public class LandmarkPreprocessor {
     }
 
     public LandmarkPreprocessingResult preprocess(int[] landmarks) {
-        // run dijkstra on all landmarks and then store the result
 
         Dijkstra dijkstra = new Dijkstra();
 
-        // we make these arrays using SingleSourceResult so we can get the whole djikstra result
         SingleSourceResult[] fromLandmark = new SingleSourceResult[landmarks.length];
         SingleSourceResult[] toLandmark = new SingleSourceResult[landmarks.length];
 
-        // Loop through every landmark
         for (int i=0; i < landmarks.length; i++) {
 
             int landmark = landmarks[i];
-            // Run forward and reverse Dijkstra
             SingleSourceResult from = dijkstra.computeShortestPaths(network.forward(), landmark);
             SingleSourceResult to = dijkstra.computeShortestPaths(network.reverse(), landmark);
 
 
-            // Store both results
             fromLandmark[i] = from;
             toLandmark[i] = to;
 
