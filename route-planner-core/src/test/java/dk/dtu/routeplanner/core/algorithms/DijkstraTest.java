@@ -1,5 +1,6 @@
 package dk.dtu.routeplanner.core.algorithms;
 
+import static dk.dtu.routeplanner.core.algorithms.PathAssertions.assertValidPath;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
@@ -58,5 +59,32 @@ class DijkstraTest {
         SearchResult reverse = algorithm.findShortestPath(graph, 2, 0);
         assertEquals(Double.POSITIVE_INFINITY, reverse.distance());
         assertEquals(0, reverse.path().length);
+    }
+
+    @Test
+    void zeroWeightCycleAndDisconnectedComponentHaveKnownDistances() {
+        // 0 <-> 1 costs zero; reaching 2 via 1 costs 2. Nodes 3 -> 4 form a separate component.
+        Graph graph = new CsrGraph(new int[]{0, 2, 4, 4, 5, 5},
+                new int[]{1, 2, 0, 2, 4}, new double[]{0, 9, 0, 2, 1});
+        double infinity = Double.POSITIVE_INFINITY;
+        double[][] expected = {
+                {0, 0, 2, infinity, infinity},
+                {0, 0, 2, infinity, infinity},
+                {infinity, infinity, 0, infinity, infinity},
+                {infinity, infinity, infinity, 0, 1},
+                {infinity, infinity, infinity, infinity, 0}
+        };
+        Dijkstra algorithm = new Dijkstra();
+
+        for (int source = 0; source < graph.nodeCount(); source++) {
+            SingleSourceResult distances = algorithm.computeShortestPaths(graph, source);
+            for (int target = 0; target < graph.nodeCount(); target++) {
+                String pair = source + " -> " + target;
+                SearchResult result = algorithm.findShortestPath(graph, source, target);
+                assertEquals(expected[source][target], distances.distance(target), pair);
+                assertEquals(expected[source][target], result.distance(), pair);
+                assertValidPath(graph, source, target, result);
+            }
+        }
     }
 }

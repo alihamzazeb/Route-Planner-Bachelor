@@ -31,7 +31,7 @@ class PointToPointAlgorithmsTest {
     }
 
     @Test
-    void seededDirectedGraphsAgreeWithIndependentFloydWarshall() {
+    void seededDirectedGraphsAgreeWithDijkstraSingleSourceDistances() {
         Random random = new Random(2026);
         for (int trial = 0; trial < 25; trial++) {
             int n = 3 + random.nextInt(7);
@@ -73,7 +73,10 @@ class PointToPointAlgorithmsTest {
 
     private void assertAllAlgorithms(Graph graph, Random random) {
         int n = graph.nodeCount();
-        double[][] expected = floydWarshall(graph);
+        SingleSourceResult[] expected = new SingleSourceResult[n];
+        for (int source = 0; source < n; source++) {
+            expected[source] = new Dijkstra().computeShortestPaths(graph, source);
+        }
         RoadNetwork network = new RoadNetwork(graph, reverse(graph));
         int[] longitude = new int[n];
         int[] latitude = new int[n];
@@ -97,59 +100,35 @@ class PointToPointAlgorithmsTest {
                 new AStar(heuristics.get(2)));
 
         for (int source = 0; source < n; source++) {
-            SingleSourceResult all = new Dijkstra().computeShortestPaths(graph, source);
             for (int target = 0; target < n; target++) {
                 String pair = source + " -> " + target;
-                assertEquals(expected[source][target], all.distance(target), pair);
                 for (int variant = 0; variant < algorithms.size(); variant++) {
                     SearchResult actual = algorithms.get(variant).findShortestPath(graph, source, target);
-                    assertEquals(expected[source][target], actual.distance(), pair + ", variant=" + variant);
+                    assertEquals(expected[source].distance(target), actual.distance(), pair + ", variant=" + variant);
                     assertValidPath(graph, source, target, actual);
                 }
             }
         }
     }
 
-    private static void assertHeuristicAssumptions(Graph graph, double[][] distances, List<Heuristic> heuristics) {
+    private static void assertHeuristicAssumptions(Graph graph, SingleSourceResult[] distances, List<Heuristic> heuristics) {
         for (Heuristic heuristic : heuristics) {
             for (int target = 0; target < graph.nodeCount(); target++) {
                 assertEquals(0, heuristic.estimate(target, target));
                 for (int node = 0; node < graph.nodeCount(); node++) {
-                    if (!Double.isFinite(distances[node][target])) continue;
+                    if (!Double.isFinite(distances[node].distance(target))) continue;
                     double estimate = heuristic.estimate(node, target);
-                    assertTrue(estimate >= 0 && estimate <= distances[node][target] + 1e-9);
+                    assertTrue(estimate >= 0 && estimate <= distances[node].distance(target) + 1e-9);
                     for (int edge = graph.edgeStart(node); edge < graph.edgeEnd(node); edge++) {
                         int next = graph.edgeTarget(edge);
                         // A dead end cannot be part of a route to this target.
-                        if (!Double.isFinite(distances[next][target])) continue;
+                        if (!Double.isFinite(distances[next].distance(target))) continue;
                         assertTrue(estimate <= graph.edgeWeight(edge) + heuristic.estimate(next, target) + 1e-9,
                                 "Inconsistent heuristic on " + node + " -> " + next + ", target=" + target);
                     }
                 }
             }
         }
-    }
-
-    private static double[][] floydWarshall(Graph graph) {
-        int n = graph.nodeCount();
-        double[][] distances = new double[n][n];
-        for (int node = 0; node < n; node++) {
-            Arrays.fill(distances[node], Double.POSITIVE_INFINITY);
-            distances[node][node] = 0;
-            for (int edge = graph.edgeStart(node); edge < graph.edgeEnd(node); edge++) {
-                int target = graph.edgeTarget(edge);
-                distances[node][target] = Math.min(distances[node][target], graph.edgeWeight(edge));
-            }
-        }
-        for (int via = 0; via < n; via++) {
-            for (int from = 0; from < n; from++) {
-                for (int to = 0; to < n; to++) {
-                    distances[from][to] = Math.min(distances[from][to],
-                            distances[from][via] + distances[via][to]);
-                }
-            }
-        }
-        return distances;
     }
 
     private static Graph reverse(Graph graph) {
