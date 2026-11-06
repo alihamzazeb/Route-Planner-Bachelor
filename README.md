@@ -89,40 +89,9 @@ Performance is measured separately for two different shortest-path problems usin
 
 **Experiment B: Point-to-point.** Dijkstra, Bidirectional Dijkstra, A* and ALT are compared on 100 fixed reachable routes: 33 short, 33 medium and 34 long. Additional measurements cover search effort, allocation, preprocessing, the number of ALT landmarks (1, 2, 4 and 8), and random versus geographical farthest-first selection. The main ALT benchmark uses four random landmarks with seed `2026`; the interactive API uses seed `42`.
 
-Recorded results and workloads are in `benchmark-data/results/` and `benchmark-data/workloads/`. The primary Experiment B timings are in `NY-balanced-time.json`.
+Recorded results are in `benchmark-data/results/experiment-a/` and `benchmark-data/results/experiment-b/`; fixed workloads are in `benchmark-data/workloads/`. The primary Experiment B timings are in `benchmark-data/results/experiment-b/NY-balanced-time.json`. The 17 PDF figures are included under `report-figures/experiment-a/` and `report-figures/experiment-b/`.
 
-Build the benchmark JAR:
-
-```bash
-mvn -pl route-planner-benchmark -am -DskipTests package
-```
-
-Run the correctness checks:
-
-```bash
-java -cp route-planner-benchmark/target/benchmarks.jar \
-  dk.dtu.routeplanner.benchmark.expa.SingleSourceExperimentRunner
-
-java -cp route-planner-benchmark/target/benchmarks.jar \
-  dk.dtu.routeplanner.benchmark.expb.BenchmarkRunner
-```
-
-These runners overwrite their validation or counter CSV files in `benchmark-data/results/`. Run them in a separate copy of the project to preserve the submitted results.
-
-List the available JMH benchmarks:
-
-```bash
-java -jar route-planner-benchmark/target/benchmarks.jar -l
-```
-
-To regenerate report figures from the saved results:
-
-```bash
-python3 -m pip install matplotlib
-python3 scripts/benchmarkFigures.py
-```
-
-The figures are saved as PDFs under `report-figures/`, which is excluded from Git.
+See [Benchmark Commands](BENCHMARK_COMMANDS.md) for instructions to build and run the benchmarks, check correctness and regenerate the figures. The [recorded environment](benchmark-data/results/experiment-b/environment.txt) lists the hardware, software versions, benchmarked commit and workload hashes.
 
 ## Testing and limitations
 
@@ -134,6 +103,6 @@ mvn -pl route-planner-core -Dduan.ny=true test
 
 The evaluation uses **one road network** and does not establish performance scaling across graph sizes. The short/medium/long route categories and kilometre display use an inferred conversion of **10 stored weight units per metre**; the algorithms themselves operate on the original edge weights. This conversion is not independently verified against the dataset documentation.
 
-The existing Experiment A timing and allocation files were recorded before the latest Duan implementation changes and should not be presented as new measurements of that revision. Duan's published theoretical bound is not independently established for this Java adaptation.
+Duan's published theoretical bound is not independently established for this Java adaptation.
 
 Dataset source: [9th DIMACS Implementation Challenge](https://www.diag.uniroma1.it/challenge9/).
