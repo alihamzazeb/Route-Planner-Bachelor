@@ -9,9 +9,20 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
 
+
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS = ROOT / "benchmark-data" / "results"
 FIGURES = ROOT / "report-figures"
+
+
+def result_file(filename):
+    experiment = (
+        "experiment-a"
+        if filename.startswith("NY-single-source-")
+        else "experiment-b"
+    )
+    return RESULTS / experiment / filename
+
 
 COLORS = {
     "dijkstra": "#0072B2",
@@ -32,7 +43,12 @@ NAMES = {
 }
 
 ORDER = ["dijkstra", "bidirectional", "astar", "alt"]
-JMH_NOTE = "Error bars: JMH 99.9% confidence intervals (2 forks, 5 measurement iterations each)."
+
+JMH_NOTE = (
+    "Error bars: JMH 99.9% confidence intervals "
+    "(3 forks, 10 measurement iterations per fork)."
+)
+
 ROUTES_NOTE = "NY: 100 fixed routes (33 short, 33 medium, 34 long); ALT: 4 random landmarks, seed 2026."
 
 plt.rcParams.update({
@@ -50,7 +66,7 @@ plt.rcParams.update({
 # Shared functions
 
 def jmh(filename):
-    with (RESULTS / filename).open(encoding="utf-8") as f:
+    with result_file(filename).open(encoding="utf-8") as f:
         records = json.load(f)
 
     for record in records:
@@ -64,7 +80,7 @@ def jmh(filename):
 
 
 def csv_rows(filename):
-    with (RESULTS / filename).open(
+    with result_file(filename).open(
         newline="", encoding="utf-8"
     ) as f:
         return [
@@ -610,12 +626,28 @@ def experiment_b():
         note="Mean of 5 warmed setup runs per configuration in one process; graph loading excluded.\nRaw trials were not saved for this experiment, so no uncertainty bars are inferred."
     )
 
+
     # Figure B12: Estimated ALT break-even
 
-    alt_setup = setups[("random", 4)]
     preprocessing = csv_rows("NY-preprocessing.csv")
-    astar_setup = sum(float(r["astar_setup_ms"]) for r in preprocessing) / len(preprocessing)
-    baseline_setups = {"dijkstra": 0.0, "bidirectional": 0.0, "astar": astar_setup}
+
+    astar_setup = sum(
+        float(row["astar_setup_ms"])
+        for row in preprocessing
+    ) / len(preprocessing)
+
+    alt_setup = sum(
+        float(row["landmark_selection_ms"])
+        + float(row["alt_preprocessing_ms"])
+        for row in preprocessing
+    ) / len(preprocessing)
+
+    baseline_setups = {
+        "dijkstra": 0.0,
+        "bidirectional": 0.0,
+        "astar": astar_setup
+    }
+
 
     fig, ax = new_plot(
         "Estimated cumulative runtime: ALT vs query algorithms",

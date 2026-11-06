@@ -1,0 +1,5 @@
+method,landmarks,selection_ms,preprocessing_ms,total_setup_ms,table_mib
+random,4,0.021,274.841,274.862,16.134
+farthest,4,0.896,260.702,261.598,16.134
+random,8,0.024,526.038,526.062,32.269
+farthest,8,1.448,509.801,511.249,32.269

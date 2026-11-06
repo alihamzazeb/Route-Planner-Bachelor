@@ -1,0 +1,51 @@
+Git commit:
+5e6911cee40a9fa547032d704e3b7db0dddd4446
+
+Java version:
+openjdk version "21.0.5" 2024-10-15 LTS
+OpenJDK Runtime Environment Zulu21.38+21-CA (build 21.0.5+11-LTS)
+OpenJDK 64-Bit Server VM Zulu21.38+21-CA (build 21.0.5+11-LTS, mixed mode, sharing)
+
+Maven version:
+Apache Maven 3.9.11 (3e54c93a704957b63ee3494413a2b544fd3d825b)
+Maven home: /opt/homebrew/Cellar/maven/3.9.11/libexec
+Java version: 21.0.5, vendor: Azul Systems, Inc., runtime: /Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home
+Default locale: en_DK, platform encoding: UTF-8
+OS name: "mac os x", version: "27.2", arch: "aarch64", family: "mac"
+
+Operating system:
+ProductName:		macOS
+ProductVersion:		27.2
+BuildVersion:		26B123
+
+Hardware:
+Hardware:
+
+    Hardware Overview:
+
+      Model Name: MacBook Pro
+      Model Identifier: Mac15,9
+      Model Number: MUW73DK/A
+      Chip: Apple M3 Max
+      Total Number of Cores: 16 (12 Performance and 4 Efficiency)
+      Memory: 48 GB
+      System Firmware Version: 20457.41.3
+      OS Loader Version: 20457.41.3
+
+
+JMH configuration:
+JMH 1.37
+Forks: 3
+Warmup: 5 x 3 seconds
+Measurement: 10 x 5 seconds
+Threads: 1
+Heap: -Xms2g -Xmx2g
+Mode: Average Time, ms/op
+
+Workload SHA-256:
+2b47eb71b8d913b9f66b41eed2da76c95dd0af1197f9ce119305df9adec38a42  benchmark-data/workloads/NY-100pairs-balanced-seed42.csv
+ad683463790df139a420e70dba2da9a0855edcaf632ee08097e68900c3590c6d  benchmark-data/workloads/NY-10sources-seed42.csv
+1922cc6a6ee5ff0a54765f002795040f036b18f42a4212e4202645a91179228a  benchmark-data/workloads/NY-balanced-metadata-seed42.csv
+e150d8daff9eda437403c1a6f9a7a4f5a4bfcdbad991b8bba23276f278a02394  benchmark-data/workloads/NY-long-seed42.csv
+4b8cbf6ff29cc82ef7125bc9bba922a248ee6846fb7158dc1f764b14d6a2e971  benchmark-data/workloads/NY-medium-seed42.csv
+59e37e8489a77d090a3368e01c4cbcf8f0163f7a990cdf71d19931b445aeebc4  benchmark-data/workloads/NY-short-seed42.csv
