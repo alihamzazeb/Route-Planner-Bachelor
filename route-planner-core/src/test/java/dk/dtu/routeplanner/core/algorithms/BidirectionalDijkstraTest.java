@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
 
-import static dk.dtu.routeplanner.core.algorithms.PathAssertions.assertValidPath;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -14,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import org.junit.jupiter.api.Test;
 
+import static dk.dtu.routeplanner.core.algorithms.PathAssertions.assertValidPath;
 import dk.dtu.routeplanner.core.graph.CsrGraph;
 import dk.dtu.routeplanner.core.graph.Graph;
 import dk.dtu.routeplanner.core.graph.RoadNetwork;
@@ -66,6 +66,43 @@ class BidirectionalDijkstraTest {
 
         assertEquals(6, result.distance());
         assertArrayEquals(new int[]{0, 2, 3, 4}, result.path());
+    }
+
+    @Test
+    void countsTheWorkOfBothSearches() {
+        RoadNetwork network = example();
+        SearchResult result = new BidirectionalDijkstra(network).findShortestPath(network.forward(), 0, 4);
+
+        assertEquals(4, result.settledCounter());
+        assertEquals(7, result.relaxedCounter());
+    }
+
+    @Test
+    void staleQueueEntriesAreNotCountedInEitherDirection() {
+        double[][] weights = new double[7][7];
+        for (double[] row : weights) {
+            Arrays.fill(row, Double.POSITIVE_INFINITY);
+        }
+        weights[0][1] = 1;
+        weights[0][2] = 10;
+        weights[1][2] = 1;
+        weights[2][3] = 20;
+        weights[3][4] = 20;
+        weights[4][5] = 20;
+        weights[5][6] = 1;
+        RoadNetwork network = new RoadNetwork(fromMatrix(weights, false), fromMatrix(weights, true));
+        SearchResult forwardStale = new BidirectionalDijkstra(network).findShortestPath(network.forward(), 0, 6);
+
+        assertEquals(63, forwardStale.distance());
+        assertEquals(6, forwardStale.settledCounter());
+        assertEquals(7, forwardStale.relaxedCounter());
+
+        RoadNetwork mirrored = new RoadNetwork(network.reverse(), network.forward());
+        SearchResult backwardStale = new BidirectionalDijkstra(mirrored).findShortestPath(mirrored.forward(), 6, 0);
+
+        assertEquals(63, backwardStale.distance());
+        assertEquals(6, backwardStale.settledCounter());
+        assertEquals(7, backwardStale.relaxedCounter());
     }
 
     @Test

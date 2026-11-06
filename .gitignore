@@ -7,4 +7,8 @@ target/
 
 .DS_Store
 
+# Python
+.venv/
+__pycache__/
+
 **/config.local.js

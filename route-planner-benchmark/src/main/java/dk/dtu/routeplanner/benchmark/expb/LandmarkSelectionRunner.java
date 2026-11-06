@@ -40,7 +40,6 @@ public final class LandmarkSelectionRunner {
                 BenchmarkConfig.PAIR_COUNT
         );
 
-        // Calculate correct shortest distances once.
         double[] expected = RouteChecks.referenceDistances(graph, pairs);
 
         LandmarkPreprocessor preprocessor = new LandmarkPreprocessor(network);

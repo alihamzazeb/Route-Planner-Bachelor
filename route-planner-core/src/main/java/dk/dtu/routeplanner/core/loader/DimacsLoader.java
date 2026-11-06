@@ -1,4 +1,3 @@
-
 package dk.dtu.routeplanner.core.loader;
 
 import java.io.IOException;
@@ -60,7 +59,6 @@ public class DimacsLoader {
 
         Graph forward = buildCsr(nodeCount, sources, targets, weights);
 
-        // reverse
         Graph reverse = buildCsr(nodeCount, targets, sources, weights);
 
         return new RoadNetwork(forward, reverse);
@@ -75,22 +73,21 @@ public class DimacsLoader {
 
         int edgeCount = sources.length;
 
-        // we count how many arcs each node has. so we know how many slots we need to allocate for each node in the graph.
+        // Count each node's arcs to know how many slots it needs
         int[] counts = new int[nodeCount];
 
         for (int source : sources) {
             counts[source]++;
         }
 
-        // we make an offsets array which will tell us where each node starts in the graph.
-        // we want to put all of node 0's edges together in the array, and then node 1, then node 2.....
+        // offsets[i] is where node i's edges start: node 0's edges first, then node 1's, and so on
         int[] offsets = new int[nodeCount + 1];
 
         for (int i = 1; i <= nodeCount; i++) {
             offsets[i] = offsets[i - 1] + counts[i - 1];
         }
 
-        // the edges for the nodes are scattered and not sorted. so we need to know what slot has been used for each of the nodes.
+        // Arcs arrive in any order, so cursor tracks the next free slot of each node
         int[] cursor = Arrays.copyOf(offsets, nodeCount);
         int[] orderedTargets = new int[edgeCount];
         double[] orderedWeights = new double[edgeCount];

@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Random;
 
-import static dk.dtu.routeplanner.core.algorithms.PathAssertions.assertValidPath;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -14,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import org.junit.jupiter.api.Test;
 
+import static dk.dtu.routeplanner.core.algorithms.PathAssertions.assertValidPath;
 import dk.dtu.routeplanner.core.algorithms.alt.GeographicFarthestLandmarkSelector;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkHeuristic;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkPreprocessor;
@@ -156,6 +156,16 @@ class ALTTest {
 
         assertEquals(0.0, heuristic.estimate(4, 4), 1e-9);
         assertEquals(0.0, heuristic.estimate(5, 4), 1e-9);
+    }
+
+    @Test
+    void heuristicUsesTheBestBoundOfAllLandmarks() {
+        for (int[] landmarks : new int[][]{{1, 3}, {3, 1}}) {
+            LandmarkHeuristic heuristic = new LandmarkHeuristic(
+                    new LandmarkPreprocessor(smallNetwork()).preprocess(landmarks));
+
+            assertEquals(6.0, heuristic.estimate(1, 4), 1e-9, Arrays.toString(landmarks));
+        }
     }
 
     @Test

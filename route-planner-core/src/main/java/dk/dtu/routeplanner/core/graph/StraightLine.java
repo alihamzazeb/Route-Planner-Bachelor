@@ -13,14 +13,8 @@ public class StraightLine {
 
     
     private static double squeezeFor(Coordinates coordinates) {
-        /*
-        * 1 degree of latitude is approximately the same around the globe.
-        * but 1 degree longitude depends on what latitude is.
-        * 1 degree longitude get smaller the more higher the latitude is
-        */
-
-
-        // find the smallest and largest latitude.
+        // A degree of longitude gets shorter further from the equator, so east-west
+        // differences are scaled by the cosine of the data's middle latitude.
         int[] latitudes = coordinates.latitude();
         int smallest=latitudes[0];
         int largest=latitudes[0];
@@ -35,17 +29,16 @@ public class StraightLine {
             } 
         }
 
-        // average of smallest and largest
         double middle = (smallest + largest) / 2.0;
 
-        // turn it into degrees. Divide by 1000000
+        // coordinates are stored in millionths of a degree
         double middleDegrees=middle/1000000.0;
 
-        // using cos() to find the difference between 1 degree latitude and longitude at 40 latitude (middle is new york)
         double squeeze = Math.cos(Math.toRadians(middleDegrees));
 
         return squeeze;
     }
+
 
     public double distance(int a, int b){
         // get the longi and latitude of the current and target node
@@ -54,8 +47,6 @@ public class StraightLine {
         int longitudeA=coordinates.longitude()[a];
         int longitudeB=coordinates.longitude()[b];
 
-        // east is side
-        // nort is up/down
         int east = longitudeB - longitudeA;
         int north = latitudeB - latitudeA;
 
@@ -74,20 +65,17 @@ public class StraightLine {
 
         for (int u = 0; u < graph.nodeCount(); u++) {
             for (int i = graph.edgeStart(u); i < graph.edgeEnd(u); i++) {
-                int v = graph.edgeTarget(i); // where this road goes
-                double weight = graph.edgeWeight(i);// this road's weight
+                int v = graph.edgeTarget(i);
+                double weight = graph.edgeWeight(i);
                 double straight = distance(u, v);
 
-                // cant divide by 0, skip this road
+                // Both ends are at the same spot, so this edge puts no limit on c.
                 if (straight == 0) {
                     continue;
                 }
 
-                // check wether the straigth line is <= the actual distance.
-                // 1 or more means straightline <=
                 double limit = weight/straight;
 
-                // get the smallest c value in the whole
                 if (smallest>limit) {
                     smallest = limit;
                 }

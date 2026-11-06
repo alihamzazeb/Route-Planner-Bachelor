@@ -32,7 +32,7 @@ Core algorithm and graph tests are under `route-planner-core/src/test/`; API and
 
 ## Build and run
 
-**Requirements:** Java 21 and Maven. Python 3 with Matplotlib is needed only to regenerate figures. The map requires internet access for its external assets.
+**Requirements:** Java 21 and Maven 3.6.3 or newer. Python 3 with Matplotlib is needed only to regenerate figures. The map requires internet access for its external assets; without it, searches still work but no map is shown.
 
 The repository includes the New York dataset:
 
@@ -95,13 +95,17 @@ See [Benchmark Commands](BENCHMARK_COMMANDS.md) for instructions to build and ru
 
 ## Testing and limitations
 
-JUnit tests cover graph loading and representation, algorithm correctness, path reconstruction, directed landmarks, Duan's graph preparation and queue, numerical edge cases, and API validation. Additional New York Duan tests can be enabled with:
+JUnit tests cover graph loading and representation, algorithm correctness, path reconstruction, search counters, directed landmarks, Duan's graph preparation and queue, numerical edge cases, and API validation. The web interface has no automated tests. Additional New York Duan tests can be enabled with:
 
 ```bash
 mvn -pl route-planner-core -Dduan.ny=true test
 ```
 
-The evaluation uses **one road network** and does not establish performance scaling across graph sizes. The short/medium/long route categories and kilometre display use an inferred conversion of **10 stored weight units per metre**; the algorithms themselves operate on the original edge weights. This conversion is not independently verified against the dataset documentation.
+The evaluation uses **one road network** and does not establish performance scaling across graph sizes. The short/medium/long route categories and kilometre display use an inferred conversion of **10 stored weight units per metre**; the algorithms themselves operate on the original edge weights. This conversion is not independently verified against the dataset documentation, but it matches the data: for edges of at least 20 m, weight divided by great-circle length has a median of 9.99.
+
+Search counters do not mean exactly the same for every algorithm. Bidirectional Dijkstra's settled count adds both searches, so a node settled by both counts twice. The relaxed count includes every edge scan, not only scans that improve a distance. Duan's settled count is the number of reachable nodes, and its relaxed count includes repeated scans of its internal graph.
+
+Each query allocates and fills arrays for the whole graph, which takes a large share of the time on short routes. All landmark results use a single seed (`2026`), so they describe those landmark sets rather than a general ranking of selection methods.
 
 Duan's published theoretical bound is not independently established for this Java adaptation.
 

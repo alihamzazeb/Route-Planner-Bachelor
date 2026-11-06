@@ -4,8 +4,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
+import static dk.dtu.routeplanner.core.algorithms.PathAssertions.assertValidPath;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkHeuristic;
 import dk.dtu.routeplanner.core.algorithms.alt.LandmarkPreprocessor;
 import dk.dtu.routeplanner.core.graph.Coordinates;
@@ -15,10 +18,6 @@ import dk.dtu.routeplanner.core.graph.RoadNetwork;
 import dk.dtu.routeplanner.core.graph.StraightLine;
 import dk.dtu.routeplanner.core.model.SearchResult;
 import dk.dtu.routeplanner.core.model.SingleSourceResult;
-
-import static dk.dtu.routeplanner.core.algorithms.PathAssertions.assertValidPath;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PointToPointAlgorithmsTest {
 
@@ -54,6 +53,17 @@ class PointToPointAlgorithmsTest {
     }
 
     @Test
+    void searchStopsWhenTheTargetIsSettled() {
+        Graph chain = new CsrGraph(new int[]{0, 1, 2, 3, 3}, new int[]{1, 2, 3}, new double[]{1, 1, 1});
+        for (PointToPointAlgorithm algorithm : List.of(new Dijkstra(), new AStar((node, target) -> 0))) {
+            SearchResult result = algorithm.findShortestPath(chain, 0, 1);
+            assertEquals(1, result.distance());
+            assertEquals(2, result.settledCounter());
+            assertEquals(1, result.relaxedCounter());
+        }
+    }
+
+    @Test
     void staleQueueEntriesDoNotCountAsExpansions() {
         Graph graph = new CsrGraph(new int[]{0, 2, 3, 4, 4, 4},
                 new int[]{1, 2, 3, 1}, new double[]{20, 1, 1, 1});
@@ -76,6 +86,7 @@ class PointToPointAlgorithmsTest {
         SingleSourceResult[] expected = new SingleSourceResult[n];
         for (int source = 0; source < n; source++) {
             expected[source] = new Dijkstra().computeShortestPaths(graph, source);
+            assertMatchesBellmanFord(graph, source, expected[source]);
         }
         RoadNetwork network = new RoadNetwork(graph, reverse(graph));
         int[] longitude = new int[n];
@@ -108,6 +119,25 @@ class PointToPointAlgorithmsTest {
                     assertValidPath(graph, source, target, actual);
                 }
             }
+        }
+    }
+
+    // The other algorithms are compared with Dijkstra, so Dijkstra itself is checked without using it.
+    private static void assertMatchesBellmanFord(Graph graph, int source, SingleSourceResult actual) {
+        int n = graph.nodeCount();
+        double[] distances = new double[n];
+        Arrays.fill(distances, Double.POSITIVE_INFINITY);
+        distances[source] = 0;
+        for (int pass = 1; pass < n; pass++) {
+            for (int node = 0; node < n; node++) {
+                for (int edge = graph.edgeStart(node); edge < graph.edgeEnd(node); edge++) {
+                    int next = graph.edgeTarget(edge);
+                    distances[next] = Math.min(distances[next], distances[node] + graph.edgeWeight(edge));
+                }
+            }
+        }
+        for (int node = 0; node < n; node++) {
+            assertEquals(distances[node], actual.distance(node), source + " -> " + node);
         }
     }
 

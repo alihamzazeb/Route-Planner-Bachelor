@@ -61,11 +61,11 @@ public class PreprocessingRunner {
         AStar alt = new AStar(new LandmarkHeuristic(preprocessing));
         double altMs = ms(start);
 
-        // memory stuff
+        // array payloads in bytes, without object headers
         int nodes = network.forward().nodeCount();
         long edges = network.forward().edgeEnd(nodes - 1);
 
-        // Forward and reverse graph arrays bytes
+        // forward and reverse CSR arrays
         long graphBytes = 2L * (
             (nodes + 1L) * Integer.BYTES +
             edges * (Integer.BYTES + Double.BYTES)
@@ -85,7 +85,6 @@ public class PreprocessingRunner {
                 altBytes / 1048576.0
         );
 
-        // the prepared data
         keepAlive = new PreparedData(network, coordinates, astar, alt);
 
         // save the results to a csv

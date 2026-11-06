@@ -91,16 +91,15 @@ public final class BalancedWorkloadGenerator {
                 if (source == target || usedPairs.contains(pairId(source, target))) {
                     continue;
                 }
-
-                // use straightline function to filter out possible candidates. and covnert to meter
+                // The straight-line distance is an approximate lower bound, so it
+                // rejects most pairs that are too long without running Dijkstra and then also convert it to meter
                 double straightMetres = straightLine.distance(source, target) * METRES_PER_COORDINATE_UNIT;
 
-                //reject the impossible pair. like they are not the required distance
                 if (!group.plausible(straightMetres)) {
                     continue;
                 }
 
-                // we use dijsktra to find the actual distance. becuase straightline is just a lower bound
+                // running dijsktra to find the actual distance
                 double roadWeight = dijkstra.findShortestPath(graph, source, target).distance();
 
                 double roadMetres = roadWeight / UNITS_PER_METRE;
@@ -149,7 +148,6 @@ public final class BalancedWorkloadGenerator {
             throw new IllegalStateException("Expected exactly 100 routes");
         }
 
-        // Combine short, medium and long into one workload.
         Workloads.savePairs(BenchmarkConfig.NY_WORKLOAD, pairs(allRoutes));
 
         Files.write(WORKLOAD_DIR.resolve("NY-balanced-metadata-seed42.csv"),

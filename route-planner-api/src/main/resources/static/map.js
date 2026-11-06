@@ -1,5 +1,3 @@
-import * as maplibregl from "https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.mjs";
-
 const routeForm = document.getElementById("route-form");
 const searchType = document.getElementById("search-type");
 const sourceInput = document.getElementById("source");
@@ -15,37 +13,44 @@ const mapMessage = document.getElementById("map-message");
 const workspace = document.querySelector(".workspace");
 const emptyRoute = { type: "FeatureCollection", features: [] };
 const styleUrl = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+const mapLibraryUrl = "https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.mjs";
 
+let maplibregl;
 let map;
 let routeSource;
 let routeCoordinates = [];
 let markers = [];
 let activeRequest;
 
-try {
-    map = new maplibregl.Map({
-        container: "map",
-        style: window.CARTO_API_KEY ? `${styleUrl}?key=${encodeURIComponent(window.CARTO_API_KEY)}` : styleUrl,
-        center: [-73.9855, 40.7580],
-        zoom: 12
-    });
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
-    map.on("error", () => { mapMessage.hidden = false; });
-    map.once("load", () => {
-        map.addSource("route", { type: "geojson", data: emptyRoute });
-        map.addLayer({
-            id: "route-line",
-            type: "line",
-            source: "route",
-            layout: { "line-join": "round", "line-cap": "round" },
-            paint: { "line-color": "#2563eb", "line-width": 5, "line-opacity": 0.9 }
+// Loaded at runtime because a failed static import would stop this whole script,
+// and searches should still work when the map library cannot be reached.
+async function initMap() {
+    try {
+        maplibregl = await import(mapLibraryUrl);
+        map = new maplibregl.Map({
+            container: "map",
+            style: window.CARTO_API_KEY ? `${styleUrl}?key=${encodeURIComponent(window.CARTO_API_KEY)}` : styleUrl,
+            center: [-73.9855, 40.7580],
+            zoom: 12
         });
-        routeSource = map.getSource("route");
-        mapMessage.hidden = true;
-        drawRoute(routeCoordinates);
-    });
-} catch {
-    mapMessage.hidden = false;
+        map.addControl(new maplibregl.NavigationControl(), "top-right");
+        map.on("error", () => { mapMessage.hidden = false; });
+        map.once("load", () => {
+            map.addSource("route", { type: "geojson", data: emptyRoute });
+            map.addLayer({
+                id: "route-line",
+                type: "line",
+                source: "route",
+                layout: { "line-join": "round", "line-cap": "round" },
+                paint: { "line-color": "#2563eb", "line-width": 5, "line-opacity": 0.9 }
+            });
+            routeSource = map.getSource("route");
+            mapMessage.hidden = true;
+            drawRoute(routeCoordinates);
+        });
+    } catch {
+        mapMessage.hidden = false;
+    }
 }
 
 function addMarker(coordinate, color) {
@@ -76,7 +81,7 @@ function drawRoute(coordinates) {
     map.fitBounds(bounds, { padding: 60, maxZoom: 15 });
 }
 
-// DIMACS distances are in tenths of a metre.
+// Uses the inferred 10 weight units per metre (see the README).
 function formatDistance(distance) {
     return `${(distance / 10000).toFixed(2)} km`;
 }
@@ -302,3 +307,4 @@ document.getElementById("clear-route").addEventListener("click", () => {
 });
 
 configureSearchType();
+initMap();
