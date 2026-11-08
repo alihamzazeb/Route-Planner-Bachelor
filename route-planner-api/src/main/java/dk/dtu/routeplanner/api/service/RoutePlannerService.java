@@ -59,7 +59,7 @@ public class RoutePlannerService {
         this.aStar = new AStar(c, straightLine);
 
         // ALT
-        int[] landmarks = new RandomLandmarkSelector().select(network.forward(), 4, 42L);
+        int[] landmarks = new RandomLandmarkSelector().select(network.forward(), 4, 2026L);
 
         LandmarkPreprocessingResult preprocessing = new LandmarkPreprocessor(network).preprocess(landmarks);
 
