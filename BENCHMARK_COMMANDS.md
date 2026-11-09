@@ -106,7 +106,7 @@ source .venv/bin/activate
 python -m pip install matplotlib
 ```
 
-Then generate all 17 PDF figures from the saved results. The saved figures used Python 3.14.2 and Matplotlib 3.11.2:
+Then generate all 18 PDF figures from the saved results. The saved figures used Python 3.14.2 and Matplotlib 3.11.2:
 
 ```bash
 .venv/bin/python scripts/benchmarkFigures.py

@@ -89,7 +89,7 @@ Performance is measured separately for two different shortest-path problems usin
 
 **Experiment B: Point-to-point.** Dijkstra, Bidirectional Dijkstra, A* and ALT are compared on 100 fixed reachable routes: 33 short, 33 medium and 34 long. Additional measurements cover search effort, allocation, preprocessing, the number of ALT landmarks (1, 2, 4 and 8), and random versus geographical farthest-first selection. The main ALT benchmark uses four random landmarks with seed `2026`; the interactive API uses seed `42`.
 
-Recorded results are in `benchmark-data/results/experiment-a/` and `benchmark-data/results/experiment-b/`; fixed workloads are in `benchmark-data/workloads/`. The primary Experiment B timings are in `benchmark-data/results/experiment-b/NY-balanced-time.json`. The 17 PDF figures are included under `report-figures/experiment-a/` and `report-figures/experiment-b/`.
+Recorded results are in `benchmark-data/results/experiment-a/` and `benchmark-data/results/experiment-b/`; fixed workloads are in `benchmark-data/workloads/`. The primary Experiment B timings are in `benchmark-data/results/experiment-b/NY-balanced-time.json`. The 18 PDF figures are included under `report-figures/experiment-a/` and `report-figures/experiment-b/`.
 
 See [Benchmark Commands](BENCHMARK_COMMANDS.md) for instructions to build and run the benchmarks, check correctness and regenerate the figures. The [recorded environment](benchmark-data/results/experiment-b/environment.txt) lists the hardware, software versions, benchmarked commit and workload hashes.
 

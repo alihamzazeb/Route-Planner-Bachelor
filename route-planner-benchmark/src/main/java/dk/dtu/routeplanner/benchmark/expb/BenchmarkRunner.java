@@ -119,11 +119,9 @@ public class BenchmarkRunner {
     }
 
     private static boolean sameDistance(double a, double b) {
-        if (Double.isInfinite(a) || Double.isInfinite(b)) {
-            return a == b;
-        }
-
-        return Math.abs(a - b) <= 0.000001;
+        return !Double.isNaN(a)
+                && !Double.isNaN(b)
+                && Double.compare(a, b) == 0;
     }
 
     private static void validatePath(Graph graph, int source, int target, SearchResult result) {
