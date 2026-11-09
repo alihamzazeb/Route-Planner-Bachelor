@@ -24,6 +24,7 @@ public class LandmarkPreprocessor {
 
             int landmark = landmarks[i];
             SingleSourceResult from = dijkstra.computeShortestPaths(network.forward(), landmark);
+            // Searching the reverse graph gives distances to the landmark in the original graph
             SingleSourceResult to = dijkstra.computeShortestPaths(network.reverse(), landmark);
 
 

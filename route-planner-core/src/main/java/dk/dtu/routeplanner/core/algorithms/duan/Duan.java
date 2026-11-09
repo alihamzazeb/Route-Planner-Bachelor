@@ -423,6 +423,7 @@ public class Duan implements SingleSourceAlgorithm, PointToPointAlgorithm {
             if (completed.size() <= k) {
                 return new BoundedResult(bound, completed.values);
             }
+            // The last node sets the exclusive bound and stays out of the completed set
             completed.removeLast();
             return new BoundedResult(last, completed.values);
         }

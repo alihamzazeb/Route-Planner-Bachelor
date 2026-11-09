@@ -224,10 +224,10 @@ def experiment_a():
     bars(
         "experiment-a",
         "02_allocation",
-        "Single-source heap allocation",
+        "Duan vs Dijkstra: memory allocation per query",
         labels,
         memory,
-        "Allocated MB per source",
+        "Allocated MB per single-source query",
         errors=[allocation[x]["secondaryMetrics"]["gc.alloc.rate.norm"]["scoreError"] / 1e6 for x in algorithms],
         colors=colors,
         units=" MB",
@@ -257,14 +257,14 @@ def experiment_a():
     ax.plot(
         queries,
         dijkstra,
-        label="Dijkstra",
+        label=f"Dijkstra ({score(times['dijkstra']):.2f} ms/query)",
         color=COLORS["dijkstra"]
     )
 
     ax.plot(
         queries,
         duan,
-        label="Prepared Duan",
+        label=f"Prepared Duan ({score(times['duan']):.2f} ms/query)",
         color=COLORS["duan"]
     )
 
@@ -272,7 +272,7 @@ def experiment_a():
     ax.set_xlim(0, 100)
     ax.set_ylim(bottom=0)
     if prep >= 0 and score(times["duan"]) >= score(times["dijkstra"]):
-        ax.text(0.98, 0.05, f"Duan setup: {prep:.2f} ms\nNo positive crossover with these mean costs.",
+        ax.text(0.98, 0.05, f"Duan setup: {prep:.2f} ms\nNo per-query saving to recover the setup cost",
                 transform=ax.transAxes, ha="right", va="bottom", fontsize=9)
 
     save(
@@ -450,16 +450,19 @@ def experiment_b():
     )
 
     counts = [1, 2, 4, 8]
+    query_times = [score(landmark_times[str(k)]) for k in counts]
+    query_changes = ["Baseline"] + [
+        f"{100 * (1 - query_times[i] / query_times[i - 1]):.1f}% lower mean\n"
+        f"than {counts[i - 1]} landmark{'s' if counts[i - 1] > 1 else ''}"
+        for i in range(1, len(counts))
+    ]
 
     bars(
         "experiment-b",
         "06_random_landmarks_query_time",
-        "ALT: number of random landmarks",
+        "ALT query time by landmark count",
         [str(k) for k in counts],
-        [
-            score(landmark_times[str(k)])
-            for k in counts
-        ],
+        query_times,
         "Average time (ms per route)",
         [
             error(landmark_times[str(k)])
@@ -468,7 +471,9 @@ def experiment_b():
         colors=[COLORS["alt"]] * len(counts),
         units=" ms",
         xlabel="Number of landmarks",
-        note="NY: the same 100 routes; random selection, seed 2026; preparation excluded.\n" + JMH_NOTE
+        annotations=query_changes,
+        note="NY: the same 100 routes; random selection, seed 2026; preparation excluded.\n"
+        "Percentages compare mean query times with the previous landmark count; gains are not monotonic.\n" + JMH_NOTE
     )
 
     # Figure B7: Landmark preprocessing
@@ -705,6 +710,7 @@ def experiment_b():
 
     route_work_reduction(counters)
     placement_tradeoff(placement_times, placement_setup)
+    landmark_preprocessing_tradeoff(counts, landmark_times, prep_trials)
 
 
 def route_work_reduction(counters):
@@ -768,11 +774,59 @@ def placement_tradeoff(placement_times, placement_setup):
          "Payload excludes graph/object overhead; overlapping CIs do not establish equivalence. " + JMH_NOTE)
 
 
+def landmark_preprocessing_tradeoff(counts, landmark_times, prep_trials):
+    query_means = [score(landmark_times[str(k)]) for k in counts]
+    query_errors = [error(landmark_times[str(k)]) for k in counts]
+    prep_means = [sum(values) / len(values) for values in prep_trials]
+    xs = list(range(len(counts)))
+
+    fig, (query_ax, prep_ax) = plt.subplots(1, 2, figsize=(10, 5.6))
+    fig.suptitle("ALT: query time and preprocessing cost", fontsize=12)
+
+    query_ax.bar(xs, query_means, yerr=query_errors, capsize=5,
+                 color=COLORS["alt"], width=0.64)
+    query_ax.set_title("(a) Query time")
+    query_ax.set_ylabel("Average time (ms per route)")
+    query_ax.set_ylim(0, max(value + err for value, err in zip(query_means, query_errors)) * 1.20)
+    for x, value, err in zip(xs, query_means, query_errors):
+        query_ax.annotate(f"{value:.2f} ms", (x, value + err), xytext=(0, 8),
+                          textcoords="offset points", ha="center", fontsize=9)
+
+    prep_ax.set_title("(b) Preprocessing time")
+    prep_ax.set_ylabel("Time (ms)")
+    for x, values in enumerate(prep_trials):
+        offsets = [(i - (len(values) - 1) / 2) * 0.045 for i in range(len(values))]
+        prep_ax.scatter([x + offset for offset in offsets], values, color=COLORS["alt"],
+                        s=35, label="Individual run" if x == 0 else None)
+        prep_ax.annotate(f"{prep_means[x]:.2f} ms", (x, max(values)), xytext=(0, 10),
+                         textcoords="offset points", ha="center", fontsize=9)
+    prep_ax.plot(xs, prep_means, linestyle="none", marker="_", markersize=28,
+                 markeredgewidth=2, color="#222222", label="Mean")
+    prep_ax.set_ylim(0, max(max(values) for values in prep_trials) * 1.20)
+    prep_ax.legend(loc="upper left", fontsize=9)
+
+    for ax in (query_ax, prep_ax):
+        ax.set_xticks(xs, [str(k) for k in counts])
+        ax.set_xlabel("Number of landmarks")
+        ax.set_xlim(-0.5, len(counts) - 0.5)
+        ax.grid(axis="y", alpha=0.22)
+        ax.set_axisbelow(True)
+
+    save(
+        fig,
+        "experiment-b",
+        "15_landmark_query_preprocessing",
+        "NY: the same 100 routes; random landmarks, seed 2026; query times exclude preprocessing.\n"
+        "Query error bars: JMH 99.9% confidence intervals (3 forks, 10 measurements per fork).\n"
+        "Preprocessing: all 5 warmed runs per count and their mean; dots are not confidence intervals."
+    )
+
+
 # both experiments
 if __name__ == "__main__":
 
     experiment_a()
     experiment_b()
 
-    print(f"Created 17 figures in {FIGURES}")
+    print(f"Created 18 figures in {FIGURES}")
     print("Each figure is saved as PDF.")
